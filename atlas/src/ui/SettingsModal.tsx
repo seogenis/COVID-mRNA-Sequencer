@@ -66,7 +66,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
           </label>
 
           <label className="field">
-            Anthropic API key (optional — enables ✦ Organize with AI)
+            Anthropic API key (optional — enables the ✦ AI features)
             <input
               type="password"
               placeholder="sk-ant-…"
@@ -74,8 +74,19 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
               onChange={(e) => setSetting('anthropicApiKey', e.target.value)}
             />
             <span className="field-hint">
-              Stored only in your browser's local storage. Calls Anthropic directly from this page.
+              Stored only in your browser's local storage. Calls Anthropic directly from this page. Powers Compose
+              (brain-dump → nodes), Connect, Organize, and node break-down.
             </span>
+          </label>
+
+          <label className="field">
+            AI model
+            <input
+              value={settings.aiModel}
+              placeholder="claude-sonnet-5"
+              onChange={(e) => setSetting('aiModel', e.target.value)}
+            />
+            <span className="field-hint">Anthropic model id used for the AI features.</span>
           </label>
 
           <div className="settings-actions">

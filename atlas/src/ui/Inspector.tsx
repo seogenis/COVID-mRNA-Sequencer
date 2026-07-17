@@ -3,6 +3,8 @@ import { useStore } from '../store'
 import type { NodeType, Level, Status, EdgeKind } from '../types'
 import { TYPE_LABEL, LEVEL_LABEL, LEVEL_ORDER, STATUS_LABEL, EDGE_LABEL } from '../config'
 import { renderMarkdown } from '../lib/markdown'
+import { decomposeNode, type GraphProposal, type AiConfig } from '../lib/ai'
+import { ProposalPreview } from './ProposalPreview'
 
 const TYPES: NodeType[] = ['strategy', 'task', 'info', 'question', 'decision']
 const STATUSES: Status[] = ['idea', 'todo', 'doing', 'blocked', 'done']
@@ -19,9 +21,31 @@ export function Inspector() {
   const startLinking = useStore((s) => s.startLinking)
   const deleteEdge = useStore((s) => s.deleteEdge)
   const select = useStore((s) => s.select)
+  const applyProposal = useStore((s) => s.applyProposal)
+  const apiKey = useStore((s) => s.settings.anthropicApiKey)
+  const model = useStore((s) => s.settings.aiModel)
   const [preview, setPreview] = useState(false)
+  const [bd, setBd] = useState<GraphProposal | null>(null)
+  const [bdLoading, setBdLoading] = useState(false)
+  const [bdError, setBdError] = useState<string | null>(null)
 
   if (!selectedId || !node) return null
+
+  const runBreakdown = async () => {
+    setBdError(null)
+    setBdLoading(true)
+    try {
+      const cfg: AiConfig = { apiKey, model }
+      const branchName = branches[node.branchId]?.name ?? 'unknown'
+      const p = await decomposeNode(cfg, node, branchName)
+      if (p.nodes.length === 0) throw new Error('No sub-steps returned.')
+      setBd(p)
+    } catch (e) {
+      setBdError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBdLoading(false)
+    }
+  }
 
   const connections = Object.values(edges).filter((e) => e.from === selectedId || e.to === selectedId)
 
@@ -139,6 +163,40 @@ export function Inspector() {
             )
           })}
         </div>
+
+        <div className="insp-section-head">
+          <span>Break down with AI</span>
+        </div>
+        {bd ? (
+          <ProposalPreview
+            proposal={bd}
+            applyLabel="Add children"
+            onApply={() => {
+              applyProposal(bd)
+              setBd(null)
+            }}
+            onDiscard={() => setBd(null)}
+          />
+        ) : (
+          <>
+            <button
+              className="btn small"
+              disabled={!apiKey || bdLoading}
+              onClick={runBreakdown}
+              title={apiKey ? '' : 'Add an API key in Settings'}
+            >
+              {bdLoading
+                ? 'Thinking…'
+                : node.level === 'execution'
+                  ? '✦ Break into sub-steps'
+                  : node.level === 'strategy'
+                    ? '✦ Break into projects'
+                    : '✦ Break into tasks'}
+            </button>
+            {!apiKey && <div className="field-hint">Needs an Anthropic API key (Settings).</div>}
+            {bdError && <p className="error-text">{bdError}</p>}
+          </>
+        )}
 
         <div className="insp-footer">
           <button className="btn danger" onClick={() => deleteNode(node.id)}>

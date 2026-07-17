@@ -53,9 +53,16 @@ everyone else is doing, at the altitude that matters to them.
 - **Change history** — a lightweight commit log. Edits to *strategy-level* nodes
   by someone other than their author are flagged for **approval** — the seed of a
   GitHub-style push/review flow. (No logins yet; you just set your name.)
-- **Organize (AI)** — an offline heuristic flags mis-filed nodes automatically;
-  add an Anthropic API key in Settings to let Claude propose deeper
-  reorganizations.
+- **AI (the ✦ button)** — add an Anthropic API key in Settings, then:
+  - **Compose** — paste a raw brain-dump (messy is fine) and Claude lays it out
+    across the three altitudes into typed nodes, branches, and edges. You preview
+    the whole subgraph and nothing changes until you hit *Add to space*.
+  - **Connect** — Claude scans existing nodes and proposes relationships you
+    haven't drawn yet (dependencies, loose links).
+  - **Organize** — propose altitude/branch reassignments (plus an offline
+    heuristic that runs with no key).
+  - **Break down** — from any node's inspector, decompose it into its children
+    one altitude lower (a strategy → projects, a project → tasks).
 - **Import / export JSON** and **Reset to seed**. State persists in your browser's
   local storage — no backend, no account.
 
@@ -127,7 +134,7 @@ These were intentionally deferred to keep v1 focused:
   commit log is scaffolding for. Today it's single-user with a name field.
 - **Live backend / sync** — swap local storage for a shared store (e.g. a small
   server or a realtime DB) so a team sees the same space.
-- **Deeper AI** — auto-drafting nodes from a brain-dump, suggesting new edges,
-  and clustering loose nodes into branches.
+- **Streaming AI + inline diff** — stream Compose results into the space live,
+  and show applied AI changes as a reviewable diff in the commit log.
 - **Node attachments** — files/images inside a node's body.
 - **Saved camera bookmarks** — jump to "the China corner" or "this quarter".

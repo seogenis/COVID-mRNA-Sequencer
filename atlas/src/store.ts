@@ -14,6 +14,7 @@ import type {
 } from './types'
 import { seedBranches, seedNodes, seedEdges } from './seed'
 import { LEVEL_ORDER } from './config'
+import type { GraphProposal } from './lib/ai'
 
 const ALL_TYPES: NodeType[] = ['strategy', 'task', 'info', 'question', 'decision']
 const ALL_STATUS: Status[] = ['idea', 'todo', 'doing', 'blocked', 'done']
@@ -49,6 +50,9 @@ interface Actions {
   addBranch: (name: string, color: string) => string
   updateBranch: (id: string, patch: Partial<Branch>) => void
 
+  /** Apply an AI-proposed subgraph (branches + nodes + edges) in one commit. */
+  applyProposal: (proposal: GraphProposal) => { nodes: number; edges: number; branches: number }
+
   setFilters: (patch: Partial<Filters>) => void
   toggleType: (t: NodeType) => void
   toggleLevel: (l: Level) => void
@@ -81,7 +85,7 @@ interface State {
   linkingFrom: string | null
   linkKind: EdgeKind
   me: string
-  settings: { anthropicApiKey: string; showLevelPlanes: boolean; showTimeGrid: boolean }
+  settings: { anthropicApiKey: string; aiModel: string; showLevelPlanes: boolean; showTimeGrid: boolean }
 }
 
 function logCommit(commits: Commit[], author: string, message: string, needsApproval: boolean): Commit[] {
@@ -109,7 +113,7 @@ export const useStore = create<State & Actions>()(
       linkingFrom: null,
       linkKind: 'hierarchy',
       me: 'You',
-      settings: { anthropicApiKey: '', showLevelPlanes: true, showTimeGrid: true },
+      settings: { anthropicApiKey: '', aiModel: 'claude-sonnet-5', showLevelPlanes: true, showTimeGrid: true },
 
       addNode: (partial) => {
         const id = partial?.id ?? uid()
@@ -218,6 +222,82 @@ export const useStore = create<State & Actions>()(
           if (!prev) return s
           return { branches: { ...s.branches, [id]: { ...prev, ...patch } } }
         })
+      },
+
+      applyProposal: (proposal) => {
+        const palette = ['#f2789f', '#5aa9e6', '#4bd0a0', '#f2c14e', '#8b7cff', '#e6825a', '#4be6d0']
+        const state = get()
+        const branches = { ...state.branches }
+        const nodes = { ...state.nodes }
+        const edges = { ...state.edges }
+        const today = new Date().toISOString().slice(0, 10)
+
+        // 1) branches
+        const branchMap: Record<string, string> = {}
+        let lane = Math.max(0, ...Object.values(branches).map((b) => b.lane))
+        proposal.branches.forEach((b, i) => {
+          const id = uid('b')
+          lane += 1
+          branches[id] = { id, name: b.name, color: b.color || palette[i % palette.length], lane }
+          branchMap[b.tempId] = id
+        })
+        const fallbackBranch = Object.keys(branches)[0]
+
+        // 2) nodes (with anti-overlap fan-out per time/level/branch cell)
+        const nodeMap: Record<string, string> = {}
+        const cell: Record<string, number> = {}
+        for (const pn of proposal.nodes) {
+          const id = uid('n')
+          const branchId = pn.branch ? branchMap[pn.branch] ?? (branches[pn.branch] ? pn.branch : fallbackBranch) : fallbackBranch
+          const time = pn.time ?? today
+          const key = `${pn.level}|${branchId}|${time}`
+          const n = (cell[key] = (cell[key] ?? 0) + 1) - 1
+          nodes[id] = {
+            id,
+            title: pn.title,
+            body: pn.body ?? '',
+            type: pn.type,
+            level: pn.level,
+            status: pn.status ?? 'idea',
+            branchId,
+            owner: state.me,
+            time,
+            offset: { x: n * 4.2, y: 0, z: n % 2 === 0 ? 0 : 2.2 },
+            pinned: false,
+            createdBy: state.me,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          }
+          nodeMap[pn.tempId] = id
+        }
+
+        // 3) edges (resolve temp ids or pass through existing ids)
+        let edgeCount = 0
+        const resolve = (ref: string) => nodeMap[ref] ?? (nodes[ref] ? ref : null)
+        for (const pe of proposal.edges) {
+          const from = resolve(pe.from)
+          const to = resolve(pe.to)
+          if (!from || !to || from === to) continue
+          const dup = Object.values(edges).some((e) => e.from === from && e.to === to && e.kind === pe.kind)
+          if (dup) continue
+          const id = uid('e')
+          edges[id] = { id, from, to, kind: pe.kind }
+          edgeCount += 1
+        }
+
+        const counts = { nodes: proposal.nodes.length, edges: edgeCount, branches: proposal.branches.length }
+        set((s) => ({
+          branches,
+          nodes,
+          edges,
+          commits: logCommit(
+            s.commits,
+            s.me,
+            `AI added ${counts.nodes} node(s), ${counts.edges} link(s)${counts.branches ? `, ${counts.branches} branch(es)` : ''}`,
+            false,
+          ),
+        }))
+        return counts
       },
 
       setFilters: (patch) => set((s) => ({ filters: { ...s.filters, ...patch } })),
@@ -339,6 +419,17 @@ export const useStore = create<State & Actions>()(
         me: s.me,
         settings: s.settings,
       }),
+      // Deep-merge persisted state so newly added setting defaults (e.g. aiModel)
+      // fill in for people who saved state before those fields existed.
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<State>
+        return {
+          ...current,
+          ...p,
+          settings: { ...current.settings, ...(p.settings ?? {}) },
+          filters: { ...current.filters, ...(p.filters ?? {}) },
+        }
+      },
     },
   ),
 )

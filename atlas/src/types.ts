@@ -99,6 +99,7 @@ export interface AtlasState {
   me: string // current author name (no auth — just a label)
   settings: {
     anthropicApiKey: string
+    aiModel: string
     showLevelPlanes: boolean
     showTimeGrid: boolean
   }
