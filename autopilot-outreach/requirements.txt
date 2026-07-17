@@ -1,0 +1,13 @@
+# Mock mode uses the Python standard library ONLY — no installs required.
+# Run: python3 run.py demo
+#
+# The dependencies below are needed only for LIVE providers (APOP_MODE=live),
+# and only for the stages you actually wire up. Uncomment as you implement
+# src/autopilot/providers/live.py.
+#
+# requests            # HTTP for Google Places / broker APIs
+# playwright          # headless presence analysis (browser already installed here)
+# anthropic           # LLM content writer (Claude)
+# openai              # LLM content writer (GPT) — alternative
+# stripe              # payments
+# twilio              # telephony (self-assembled voice stack)
