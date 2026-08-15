@@ -15,27 +15,28 @@ export function Onboarding({ onClose }: { onClose: () => void }) {
         <div className="onb-axes">
           <div className="onb-axis">
             <div className="onb-axis-key" style={{ color: '#8b7cff' }}>
-              ↕ Height
+              ↕ Rows
             </div>
             <div className="onb-axis-val">
-              <strong>Altitude.</strong> Three floors: <em>Strategy</em> up top, <em>Project</em> in the middle,{' '}
-              <em>Execution</em> down low.
+              <strong>Altitude.</strong> Three bands: <em>Strategy</em> on top, <em>Project</em> in the middle,{' '}
+              <em>Execution</em> at the bottom. Drag a card up or down to change its altitude.
             </div>
           </div>
           <div className="onb-axis">
             <div className="onb-axis-key" style={{ color: '#5aa9e6' }}>
-              ↔ Left→right
+              ↔ Columns
             </div>
             <div className="onb-axis-val">
-              <strong>Time.</strong> Past on the left, roadmap on the right. A yellow <em>NOW</em> wall marks today.
+              <strong>Time.</strong> Past on the left, roadmap on the right. A yellow <em>NOW</em> line marks today —
+              drag a card sideways to reschedule it.
             </div>
           </div>
           <div className="onb-axis">
             <div className="onb-axis-key" style={{ color: '#4bd0a0' }}>
-              ⤢ Depth
+              ● Colour
             </div>
             <div className="onb-axis-val">
-              <strong>Branch.</strong> Each strategic thread gets its own lane going into the screen.
+              <strong>Branch.</strong> Each strategic thread has its own colour. Filter to one when you want to focus.
             </div>
           </div>
         </div>
@@ -45,19 +46,16 @@ export function Onboarding({ onClose }: { onClose: () => void }) {
             <div className="onb-h">Move around</div>
             <ul>
               <li>
-                <strong>Drag</strong> to orbit
+                <strong>Drag the background</strong> to pan
               </li>
               <li>
-                <strong>Right-drag</strong> / two-finger to pan
+                <strong>Scroll</strong> to zoom (toward the cursor)
               </li>
               <li>
-                <strong>Scroll</strong> to zoom
+                <strong>Double-click a card</strong> to zoom to it
               </li>
               <li>
-                <strong>Double-click</strong> a node to fly to it
-              </li>
-              <li>
-                <strong>⤢ Frame all</strong> (bottom-right) to reset the view
+                <strong>F</strong> or <strong>⤢ Frame all</strong> to fit everything
               </li>
             </ul>
           </div>
@@ -65,17 +63,16 @@ export function Onboarding({ onClose }: { onClose: () => void }) {
             <div className="onb-h">Work with it</div>
             <ul>
               <li>
-                <strong>Double-click an empty spot on a floor</strong> to create a node there — the position sets its
-                date, branch, and altitude
+                <strong>Drag a card</strong> to move it — across a band to re-altitude, sideways to reschedule
               </li>
               <li>
-                Click a node → edit in the <strong>inspector</strong>; its connections light up
+                <strong>Double-click empty space</strong> to create a node there (its spot sets date &amp; altitude)
               </li>
               <li>
-                <strong>Filters / Outline</strong> on the left — including by <strong>person</strong>
+                Click a card → edit in the <strong>inspector</strong>; its links light up
               </li>
               <li>
-                <strong>Ctrl/⌘+Z</strong> undoes adds, deletes &amp; AI changes
+                <strong>Ctrl/⌘+Z</strong> undoes moves, adds, deletes &amp; AI changes
               </li>
               <li>
                 <strong>✦ AI</strong> → paste a brain-dump into <em>Compose</em>

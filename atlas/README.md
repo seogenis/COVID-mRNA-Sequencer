@@ -5,63 +5,65 @@ Notion and Obsidian built for how startups actually work: you have to figure out
 *what* to do and *do it* at the same time.
 
 Instead of a flat task list (Notion) or an unstructured note graph (Obsidian),
-Atlas puts everything in a navigable 3D space where **position carries meaning**.
+Atlas puts everything on a navigable 2D canvas where **position carries meaning**
+— pan, zoom, and drag like Obsidian Canvas.
 
 Built for Synphony; nothing about it is Synphony-specific — reseed it for any team.
 
 ---
 
-## The core idea: three axes, three altitudes
+## The core idea: three altitudes on a time canvas
 
-Every node has a position, and each axis means something:
+Every card has a position, and the position means something:
 
 | Axis | Meaning | Example |
 | --- | --- | --- |
-| **Height (Y)** | **Altitude** — how abstract the work is | strategy is up high, execution is down low |
-| **Left → right (X)** | **Time** — past on the left, roadmap on the right | a `NOW` wall marks today |
-| **Into the screen (Z)** | **Branch** — which strategic thread it belongs to | "China supply chain" vs "Robot data strategy" |
+| **Rows (↕)** | **Altitude** — how abstract the work is | Strategy on top, Execution at the bottom |
+| **Columns (↔)** | **Time** — past on the left, roadmap on the right | a `NOW` line marks today |
+| **Colour (●)** | **Branch** — which strategic thread it belongs to | "China supply chain" vs "Robot data strategy" |
 
-The three altitudes are the backbone:
+The three altitude bands are the backbone:
 
 - **Strategy** — high-level bets & concepts. What execs care about.
   *("Win information asymmetry in China", "UMI-style data vs VLA teleoperation".)*
 - **Project** — micro-projects with concrete deliverables. Shared by everyone.
 - **Execution** — the specific next actions. *("Email Jeff Monday", "Follow up with Jared".)*
 
-Execs live in the top two floors, builders in the bottom two, and the **Project**
-floor is the shared middle where they meet — so everyone can always see what
+Execs live in the top two bands, builders in the bottom two, and the **Project**
+band is the shared middle where they meet — so everyone can always see what
 everyone else is doing, at the altitude that matters to them.
+
+**Dragging is the core gesture:** drag a card up or down and it changes altitude;
+drag it sideways and it reschedules. Where you put it *is* what it means.
 
 ---
 
 ## What you can do
 
-- **Fly through the space** — orbit (drag), pan (right-drag / two-finger), zoom
-  (scroll), Desmos-style. **Double-click** a node to fly to it, **F** /
-  **⤢ Frame all** to fit everything in view.
+- **Navigate** — drag the background to pan, scroll to zoom (toward the cursor).
+  **Double-click a card** to zoom to it; **F** / **⤢ Frame all** fits everything.
 - **Outline view** — a Notion-style list of every node by branch → altitude in
-  the left panel; click to fly there. The 2D anchor for the 3D space.
-- **First-run onboarding** — a dismissible overlay explains the axes and
+  the left panel; click to fly there.
+- **First-run onboarding** — a dismissible overlay explains the layout and
   controls (reopen with the **?** button).
 - **Focus presets** — `Executive` (Strategy + Project) and `Builder`
   (Project + Execution) instantly hide the floor you don't need.
 - **Create / edit / delete nodes** — each node is typed (strategy, task, info,
   question, decision), has a status, an owner, a date, a branch, and a markdown
   body (so a node can be a whole folder of thinking, Obsidian-style).
-  **Double-click an empty spot on a floor** to create a node right there — the
-  position sets its date, branch, and altitude. **Ctrl/⌘+Z** undoes structural
-  changes (adds, deletes, AI applies).
-- **People lens** — filter the space by owner; selecting a node lights up its
-  connections; parent nodes show a progress bar rolling up their children, so
-  the strategy floor reflects live execution state. Zoomed far out, cards
-  collapse to compact chips so the whole space stays legible.
-- **Connect nodes** — typed edges: `contains` (hierarchy across floors),
-  `depends on`, `relates to`. Pick a link type in the inspector, then click a
-  target node in the space.
-- **Drag to reposition** — nudge a node on its floor; it pins in place. "Re-snap
-  layout" returns everything to its time/altitude/branch position.
-- **Filter everything** — by altitude, type, status, branch, or full-text search.
-  Non-matching nodes dim (or hide).
+  **Double-click empty canvas** to create a node right there — the position sets
+  its date and altitude. **Ctrl/⌘+Z** undoes structural changes (moves, adds,
+  deletes, AI applies).
+- **Drag to reposition** — grab a card and move it; drag across a band to change
+  its **altitude**, sideways to change its **date**. Click a card's status dot to
+  advance it (todo → doing → done).
+- **People lens** — filter the canvas by owner; selecting a card lights up its
+  connections and dims the rest; parent cards show a progress bar rolling up their
+  children, so the Strategy band reflects live execution state.
+- **Connect nodes** — typed edges: `contains` (hierarchy), `depends on`,
+  `relates to`. Pick a link type in the inspector, then click a target card.
+- **Filter everything** — by altitude, type, status, branch, person, or full-text
+  search. Non-matching cards dim (or hide).
 - **Change history** — a lightweight commit log. Edits to *strategy-level* nodes
   by someone other than their author are flagged for **approval** — the seed of a
   GitHub-style push/review flow. (No logins yet; you just set your name.)
@@ -99,7 +101,7 @@ Other commands:
 ```bash
 npm run build         # production bundle → dist/
 npm run build:single  # regenerate atlas-standalone.html
-npm run test:e2e      # headless-browser smoke test (12 checks, AI mocked)
+npm run test:e2e      # headless-browser smoke test (21 checks, AI mocked)
 ```
 
 See **[TEST.md](./TEST.md)** for a 3-minute manual tour and the debug toolkit
@@ -109,8 +111,8 @@ See **[TEST.md](./TEST.md)** for a 3-minute manual tour and the debug toolkit
 
 ## Stack
 
-- **React + TypeScript + Vite**
-- **three.js** via **@react-three/fiber** + **@react-three/drei** for the 3D scene
+- **React + TypeScript + Vite** — no 3D/WebGL dependency; the canvas is plain
+  DOM + SVG, so it's ~230 KB (72 KB gzipped) and loads instantly.
 - **zustand** (with `persist`) for state + local-storage persistence
 
 No backend. Everything is client-side, which makes it trivial to deploy as a
@@ -123,19 +125,19 @@ static site or lift into its own repo.
 ```
 src/
   types.ts          domain model (Node, Edge, Branch, Commit, Filters)
-  config.ts         axis math + colour/label maps (altitude, type, status, edges)
+  config.ts         colour/label maps (altitude, type, status, edges)
   seed.ts           the Synphony starter graph
-  store.ts          zustand store: all state + actions + persistence + commit log
+  store.ts          zustand store: all state + actions + persistence + undo + commit log
   lib/
-    layout.ts       world-position math + filter matching
+    layout.ts       filter matching
     markdown.ts     tiny dependency-free markdown renderer for node bodies
-    ai.ts           offline heuristic + optional Anthropic API organizer
-  scene/
-    Scene.tsx       canvas, camera, orbit controls, node drag
-    LevelPlanes.tsx the three altitude floors
-    TimeGrid.tsx    month gridlines + NOW marker
-    Edges.tsx       typed connection lines
-    NodeMesh.tsx    a single node (box + floating HTML card)
+    ai.ts           offline heuristic + optional Anthropic API (compose/connect/decompose)
+    env.ts          hosted-mode flag
+  canvas/
+    Canvas.tsx      the 2D viewport: pan / zoom / drag / frame animation
+    NodeCard.tsx    a draggable card
+    EdgeLayer.tsx   SVG connection curves
+    layout2d.ts     time↔x and altitude↔y band math (and their inverses)
   ui/
     Toolbar.tsx     top bar: focus presets, search, add, organize, history
     SidePanel.tsx   left: filters + branches + legend

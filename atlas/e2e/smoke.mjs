@@ -42,7 +42,7 @@ async function launch() {
 }
 
 const browser = await launch()
-const page = await browser.newPage()
+const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
 page.on('console', (m) => m.type() === 'error' && errors.push('console.error: ' + m.text()))
 page.on('pageerror', (e) => errors.push('pageerror: ' + e.message))
 page.on('request', (r) => {
@@ -80,9 +80,9 @@ ok('onboarding shows on first run', !!(await page.$('.onboarding')))
 await page.click('.onboarding button:has-text("Explore")').catch(() => {})
 await page.waitForTimeout(300)
 
-ok('3D canvas renders', !!(await page.$('canvas')))
-ok('seed nodes render', (await page.$$('.node-card')).length >= 10)
-ok('three altitude floors labelled', (await page.$$('.level-tag-name')).length === 3)
+ok('canvas renders', !!(await page.$('.canvas-viewport')))
+ok('seed nodes render', (await page.$$('.canvas-card')).length >= 10)
+ok('three altitude bands labelled', (await page.$$('.band-label-name')).length === 3)
 
 // --- outline + fly-to ---
 await page.click('.tab:has-text("Outline")')
@@ -101,7 +101,7 @@ const firstTitle = await page.$eval('.outline-node .outline-node-title', (e) => 
 ok('edit propagates to outline', firstTitle === 'Smoke-edited title')
 
 // --- add node ---
-const countAll = async () => (await page.$$('.node-card, .node-mini')).length
+const countAll = async () => (await page.$$('.canvas-card')).length
 const before = await countAll()
 await page.click('button.primary:has-text("Node")')
 await page.waitForTimeout(400)
@@ -112,18 +112,57 @@ await page.keyboard.press('Control+z')
 await page.waitForTimeout(400)
 ok('Ctrl+Z undoes the add', (await countAll()) === before)
 
-// --- double-click a floor creates a node at that spot ---
-await page.keyboard.press('f') // frame everything so floor space is predictable
-await page.waitForTimeout(1500)
-const canvasBox = await (await page.$('canvas')).boundingBox()
-await page.mouse.dblclick(canvasBox.x + canvasBox.width * 0.25, canvasBox.y + canvasBox.height * 0.75)
+// --- drag a card across a band changes its altitude ---
+// "First robotics hire" is an isolated project-level card (no other node shares
+// its time+band), so the mousedown can't grab an overlapping neighbour.
+const DRAG_TITLE = 'First robotics hire'
+const levelOf = (title) =>
+  page.evaluate((t) => {
+    const s = JSON.parse(localStorage.getItem('atlas-store-v1'))
+    return Object.values(s.state.nodes).find((n) => n.title === t)?.level
+  }, title)
+await page.keyboard.press('Escape')
+await page.keyboard.press('f')
+await page.waitForTimeout(1400)
+const cb = await page.locator('.canvas-card', { hasText: DRAG_TITLE }).first().boundingBox()
+const levelBefore = await levelOf(DRAG_TITLE)
+// drag it down more than a full band → into the Execution band
+await page.mouse.move(cb.x + cb.width / 2, cb.y + cb.height / 2)
+await page.mouse.down()
+await page.mouse.move(cb.x + cb.width / 2, cb.y + cb.height / 2 + 160, { steps: 8 })
+await page.mouse.move(cb.x + cb.width / 2, cb.y + cb.height / 2 + 340, { steps: 12 })
+await page.mouse.up()
+await page.waitForTimeout(400)
+const levelAfter = await levelOf(DRAG_TITLE)
+ok(`dragging a card across a band changes altitude (${levelBefore}→${levelAfter})`, levelBefore !== levelAfter)
+await page.keyboard.press('Control+z') // restore
+await page.waitForTimeout(300)
+
+// --- double-click empty space creates a node there ---
+await page.keyboard.press('Escape')
+await page.keyboard.press('f')
+await page.waitForTimeout(1400)
+// find a viewport point not covered by any card
+const empty = await page.evaluate(() => {
+  const vp = document.querySelector('.canvas-viewport').getBoundingClientRect()
+  const cards = [...document.querySelectorAll('.canvas-card')].map((c) => c.getBoundingClientRect())
+  for (let gy = 0.2; gy <= 0.8; gy += 0.08)
+    for (let gx = 0.3; gx <= 0.7; gx += 0.08) {
+      const x = vp.left + vp.width * gx
+      const y = vp.top + vp.height * gy
+      if (cards.every((r) => x < r.left - 10 || x > r.right + 10 || y < r.top - 10 || y > r.bottom + 10))
+        return { x, y }
+    }
+  return { x: vp.left + 60, y: vp.top + 60 }
+})
+const beforeDbl = await countAll()
+await page.mouse.dblclick(empty.x, empty.y)
 await page.waitForTimeout(500)
-const afterDbl = await countAll()
-const dblCreated = afterDbl === before + 1
-ok('double-click floor creates a node there', dblCreated)
+const dblCreated = (await countAll()) === beforeDbl + 1
+ok('double-click empty space creates a node', dblCreated)
 if (dblCreated) {
   const t = await page.$eval('.insp-title', (e) => e.value).catch(() => null)
-  ok('floor-created node opens in inspector', t === 'New node')
+  ok('created node opens in inspector', t === 'New node')
   await page.keyboard.press('Escape')
   await page.keyboard.press('Control+z')
   await page.waitForTimeout(300)
@@ -136,11 +175,11 @@ const ownerRows = await page.$$eval('.side-panel .check-row', (els) =>
   ['Sean', 'Alex', 'Jordan'].filter((name) => els.some((e) => (e.textContent || '').includes(name))),
 )
 ok('people facet lists owners', ownerRows.length === 3)
-const dimBefore = (await page.$$('.node-card.dim, .node-mini.dim')).length
+const dimBefore = (await page.$$('.canvas-card.dim')).length
 const seanRow = await page.$('.side-panel .check-row:has-text("Sean") input')
 await seanRow.click()
 await page.waitForTimeout(400)
-const dimAfter = (await page.$$('.node-card.dim, .node-mini.dim')).length
+const dimAfter = (await page.$$('.canvas-card.dim')).length
 ok('toggling a person dims their nodes out', dimAfter > dimBefore)
 await seanRow.click()
 await page.waitForTimeout(300)
@@ -156,7 +195,7 @@ const searchedTitle = await page.$eval('.insp-title', (e) => e.value).catch(() =
 ok('search + Enter flies to and selects the match', searchedTitle.includes('Jared'))
 
 // --- status dot click advances status (blocked → doing) ---
-await page.click('.node-card.sel button.node-status-dot')
+await page.click('.canvas-card.sel button.node-status-dot')
 await page.waitForTimeout(300)
 const statusVal = await page.$eval('.insp-grid label:nth-child(3) select', (e) => e.value).catch(() => null)
 ok('clicking the status dot advances status', statusVal === 'doing')
@@ -172,9 +211,13 @@ await page.keyboard.press('Escape')
 
 // --- focus presets ---
 await page.click('button.seg:has-text("Executive")')
-await page.waitForTimeout(300)
-const execTags = await page.$$eval('.level-tag', (els) => els.filter((e) => !e.className.includes('muted')).length)
-ok('Executive preset hides a floor', execTags === 2)
+await page.waitForTimeout(400)
+// Executive shows Strategy + Project only → all Execution cards are hidden/dimmed
+const execVisible = await page.$$eval('.canvas-card', (els) =>
+  els.filter((e) => !e.className.includes('dim')).length,
+)
+const allVisible = await page.$$eval('.canvas-card', (els) => els.length)
+ok('Executive preset hides the execution band', execVisible < allVisible)
 await page.click('button.seg:has-text("All")')
 
 // --- history ---

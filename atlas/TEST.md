@@ -32,10 +32,11 @@ npm run test:e2e
 ```
 
 Rebuilds the standalone file, drives it in headless Chromium (Playwright),
-and runs 20 checks: render, onboarding, outline fly-to, editing, node
-creation (button + double-click on a floor), undo, people facet, progress
-rollup, search fly-to, status-dot advance, focus presets, history, AI-modal
-state — failing on any console error or unexpected network request. On a machine without Playwright's
+and runs 21 checks: render, onboarding, outline fly-to, editing, node
+creation (button + double-click empty canvas), **dragging a card across a band
+to change its altitude**, undo, people facet, progress rollup, search fly-to,
+status-dot advance, focus presets, history, AI-modal state — failing on any
+console error or unexpected network request. On a machine without Playwright's
 bundled browser it falls back to your installed Chrome; you can also point
 it at a specific binary:
 
@@ -51,29 +52,30 @@ smoke test — no key or network needed.
 ## A 3-minute manual tour
 
 1. **Onboarding** appears on first run — read it, then *Explore the space*.
-2. **Move**: drag to orbit, scroll to zoom, right-drag to pan. Lost? Press
-   **F** or click **⤢ Frame all** (bottom-right). Zoom all the way out —
-   cards collapse into compact chips so the whole space stays readable.
-3. **Outline** tab (left panel) — click any node to fly to it. Double-clicking
-   a node in 3D does the same.
-4. **Create in place**: double-click an empty spot on any floor — the node is
-   born with that spot's date, branch, and altitude, ready to title.
-5. **Edit**: click a node → inspector (right). Its connected nodes light up.
-   Change its altitude and watch it move floors. Notice parents show a
-   progress bar rolling up their children (e.g. *Qualify 3 actuator
-   suppliers* → 1/2).
-6. **People**: Filters → *People* — uncheck someone to fade their work out.
+2. **Move**: drag the background to pan, scroll to zoom (toward the cursor).
+   Lost? Press **F** or click **⤢ Frame all** (bottom-right).
+3. **Drag a card** — this is the gesture that was broken before. Grab any card
+   and move it: **up/down across a band changes its altitude**, sideways
+   changes its date. Drop it and the inspector reflects the new level.
+4. **Outline** tab (left panel) — click any node to fly to it. Double-clicking
+   a card on the canvas does the same.
+5. **Create in place**: double-click empty canvas — the node is born with that
+   spot's date and altitude, ready to title.
+6. **Edit**: click a card → inspector (right). Its connected cards light up and
+   the rest dim. Notice parents show a progress bar rolling up their children
+   (e.g. *Qualify 3 actuator suppliers* → 1/2).
+7. **People**: Filters → *People* — uncheck someone to fade their work out.
    That plus **Executive / Builder** is the "what matters to me" view.
-7. **Search**: type in the top bar (match count shows) and press **Enter** to
+8. **Search**: type in the top bar (match count shows) and press **Enter** to
    fly to each match in turn.
-8. **Check things off in place**: click the status dot on any card to advance
+9. **Check things off in place**: click the status dot on any card to advance
    it (todo → doing → done) — watch the parent's progress bar move.
-9. **Link**: in the inspector click *depends on →*, then click another node.
-10. **Undo**: delete something with Backspace, bring it back with **Ctrl/⌘+Z**
+10. **Link**: in the inspector click *depends on →*, then click another card.
+11. **Undo**: delete something with Backspace, bring it back with **Ctrl/⌘+Z**
     (or the ↩ button).
-11. **History**: edit someone else's strategy node (owner ≠ you) and see it
+12. **History**: edit someone else's strategy node (owner ≠ you) and see it
     flagged for approval.
-12. **AI** (dev build + key): ✦ → *Compose* → paste a messy paragraph of
+13. **AI** (dev build + key): ✦ → *Compose* → paste a messy paragraph of
     company thoughts → *Structure this* → review → *Add to space*. Then select
     a strategy node → *Break into projects*.
 

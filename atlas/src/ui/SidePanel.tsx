@@ -170,7 +170,7 @@ function OutlineTab() {
 
   return (
     <div className="outline">
-      <div className="filter-title outline-hint">Click to fly there. Double-click a node in 3D does the same.</div>
+      <div className="filter-title outline-hint">Click to fly there. Double-click a card on the canvas does the same.</div>
       {branchList.map((b) => {
         const bn = byBranch(b.id)
         if (bn.length === 0) return null

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Scene } from './scene/Scene'
+import { Canvas } from './canvas/Canvas'
 import { Toolbar } from './ui/Toolbar'
 import { SidePanel } from './ui/SidePanel'
 import { Inspector } from './ui/Inspector'
@@ -74,7 +74,7 @@ export default function App() {
 
   return (
     <div className="app">
-      <Scene />
+      <Canvas />
       <Toolbar
         onOpenHistory={() => setHistoryOpen(true)}
         onOpenSettings={() => setSettingsOpen(true)}

@@ -1,14 +1,4 @@
-import type { AtlasNode, Branch, Filters } from '../types'
-import { LEVEL_Y, dateToX, laneToZ } from '../config'
-
-/** World position of a node, combining derived layout + manual offset. */
-export function nodePosition(n: AtlasNode, branch: Branch | undefined): [number, number, number] {
-  const lane = branch?.lane ?? 0
-  const x = dateToX(n.time) + n.offset.x
-  const y = LEVEL_Y[n.level] + n.offset.y
-  const z = laneToZ(lane) + n.offset.z
-  return [x, y, z]
-}
+import type { AtlasNode, Filters } from '../types'
 
 /** Does a node pass the active filters? */
 export function matches(n: AtlasNode, f: Filters): boolean {

@@ -84,6 +84,8 @@ interface Actions {
   addNode: (partial?: Partial<AtlasNode>) => string
   updateNode: (id: string, patch: Partial<AtlasNode>, message?: string) => void
   moveNode: (id: string, offset: { x: number; y: number; z: number }) => void
+  /** 2D drop: set time (from world x), altitude (from world y band), within-band offset. */
+  placeNode: (id: string, time: string, level: Level, offsetY: number) => void
   deleteNode: (id: string) => void
 
   addEdge: (from: string, to: string, kind: EdgeKind) => void
@@ -232,6 +234,29 @@ export const useStore = create<State & Actions>()(
           const prev = s.nodes[id]
           if (!prev) return s
           return { nodes: { ...s.nodes, [id]: { ...prev, offset, pinned: true, updatedAt: Date.now() } } }
+        })
+      },
+
+      placeNode: (id, time, level, offsetY) => {
+        set((s) => {
+          const prev = s.nodes[id]
+          if (!prev) return s
+          const changedLevel = prev.level !== level
+          const next = {
+            ...prev,
+            time,
+            level,
+            offset: { x: 0, y: offsetY, z: 0 },
+            pinned: true,
+            updatedAt: Date.now(),
+          }
+          return {
+            past: pushUndo(s, 'move node'),
+            nodes: { ...s.nodes, [id]: next },
+            commits: changedLevel
+              ? logCommit(s.commits, s.me, `moved "${next.title}" to ${level}`, level === 'strategy' && s.me !== prev.createdBy)
+              : s.commits,
+          }
         })
       },
 
