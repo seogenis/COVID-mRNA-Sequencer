@@ -137,6 +137,45 @@ def cmd_reset(args) -> None:
     print(f"Wiped {settings.data_dir}")
 
 
+def cmd_find(args) -> None:
+    """Live discovery + qualification only: find no-site targets worth pitching.
+
+    Filters: no website listed on Google, rating >= --min-rating, at least
+    --min-reviews reviews (active + established), and a phone number.
+    Qualified targets are stored as NEW leads; nothing is contacted.
+    """
+    _apply_common(args)
+    from autopilot.providers.live import GooglePlacesDiscovery
+
+    gp = GooglePlacesDiscovery()
+    store = LeadStore()
+    pool, seen = [], set()
+    for city in args.city:
+        try:
+            for lead in gp.search(city, args.category, args.limit):
+                if lead.id not in seen:
+                    seen.add(lead.id)
+                    pool.append(lead)
+        except Exception as e:
+            print(f"[{city}] {type(e).__name__}: {e}")
+
+    targets = [l for l in pool
+               if not l.presence.url
+               and l.business.rating >= args.min_rating
+               and l.business.review_count >= args.min_reviews
+               and l.business.phone]
+    targets.sort(key=lambda l: (-l.business.rating, -l.business.review_count))
+    for lead in targets:
+        lead.note(f"qualified no-site target (rating {lead.business.rating}, "
+                  f"{lead.business.review_count} reviews)")
+        store.upsert(lead)
+
+    print(f"pool: {len(pool)} · qualified no-site targets: {len(targets)} (stored)\n")
+    for l in targets:
+        print(f"  {l.business.rating}★ ({l.business.review_count:>3})  "
+              f"{l.business.name} | {l.business.phone} | {l.business.address}")
+
+
 def cmd_tick(args) -> None:
     _apply_common(args)
     pipe = Pipeline(LeadStore())
@@ -221,6 +260,15 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("show", help="print one lead's full trail")
     s.add_argument("lead_id")
     s.set_defaults(func=cmd_show)
+
+    f = sub.add_parser("find", help="live discovery: qualified no-site targets")
+    f.add_argument("--city", action="append", required=True,
+                   help="repeatable, e.g. --city 'Waco, TX' --city 'Temple, TX'")
+    f.add_argument("--category", default="landscaping")
+    f.add_argument("--limit", type=int, default=20, help="per city")
+    f.add_argument("--min-rating", type=float, default=4.0)
+    f.add_argument("--min-reviews", type=int, default=3)
+    f.set_defaults(func=cmd_find)
 
     t = sub.add_parser("tick", help="execute cadence touches due on a campaign day")
     t.add_argument("--day", type=int, required=True)
