@@ -43,6 +43,15 @@ def render_html(lead: Lead, copy: dict) -> str:
     accent, accent2, emoji = theme["accent"], theme["accent2"], theme["emoji"]
     phone_href = "tel:" + "".join(ch for ch in b.phone if ch.isdigit())
     year = datetime.now(timezone.utc).year
+    locality = ", ".join(p for p in (b.address, b.city, b.state) if p)
+    # Only show the big rating stat when we actually have one — a lead with
+    # no sourced rating must not display a false "0.0" star score.
+    if b.rating > 0:
+        stat_block = (
+            f'<div class="stat">{_e(b.rating)}★</div>'
+            f"<div>{_e(b.review_count)} customer reviews</div>")
+    else:
+        stat_block = '<div class="stat" style="font-size:1.5rem">Locally owned &amp; operated</div>'
 
     return f"""<!doctype html>
 <html lang="en">
@@ -126,10 +135,9 @@ def render_html(lead: Lead, copy: dict) -> str:
     <p class="review" style="margin-top:20px">{_e(copy.get('review',''))}</p>
   </div>
   <div style="text-align:center">
-    <div class="stat">{_e(b.rating)}★</div>
-    <div>{_e(b.review_count)} customer reviews</div>
+    {stat_block}
     <div style="margin-top:16px;color:#666">{_e(b.hours)}</div>
-    <div style="color:#666">{_e(b.address)}, {_e(b.city)}, {_e(b.state)}</div>
+    <div style="color:#666">{_e(locality)}</div>
   </div>
 </div></div></section>
 
@@ -146,7 +154,7 @@ def render_html(lead: Lead, copy: dict) -> str:
 </div></section>
 
 <footer><div class="wrap">
-  {_e(b.name)} · {_e(b.address)}, {_e(b.city)}, {_e(b.state)} · {_e(b.phone)}<br>
+  {_e(b.name)} · {_e(locality)} · {_e(b.phone)}<br>
   &copy; {year} {_e(b.name)}. Site by {_e(settings.brand)}.
 </div></footer>
 </body>
