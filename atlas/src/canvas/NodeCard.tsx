@@ -36,7 +36,8 @@ export function NodeCard({ node, x, y, matched, neighbor, hasSelection, dragging
   const selected = selectedId === node.id
   const isLinkSource = linkingFrom === node.id
   const ctxDim = hasSelection && !selected && !neighbor
-  const color = TYPE_COLOR[node.type]
+  const typeColor = TYPE_COLOR[node.type]
+  const branchColor = branch?.color ?? '#5b6478'
 
   const cls = [
     'canvas-card',
@@ -46,6 +47,7 @@ export function NodeCard({ node, x, y, matched, neighbor, hasSelection, dragging
     ctxDim ? 'ctx-dim' : '',
     isLinkSource ? 'linksrc' : '',
     dragging ? 'dragging' : '',
+    `st-${node.status}`,
   ]
     .filter(Boolean)
     .join(' ')
@@ -53,17 +55,10 @@ export function NodeCard({ node, x, y, matched, neighbor, hasSelection, dragging
   return (
     <div
       className={cls}
-      style={{
-        left: x,
-        top: y,
-        width: CARD_W,
-        // scale is applied by the world container; keep card in world px
-        ['--accent' as string]: color,
-      }}
+      style={{ left: x, top: y, width: CARD_W, ['--branch' as string]: branchColor }}
       onMouseDown={(e) => {
         if (e.button !== 0) return
-        e.stopPropagation() // don't start a background pan
-        // linking mode: this click completes the edge instead of dragging
+        e.stopPropagation()
         if (linkingFrom && linkingFrom !== node.id) {
           addEdge(linkingFrom, node.id, linkKind)
           select(node.id)
@@ -80,41 +75,43 @@ export function NodeCard({ node, x, y, matched, neighbor, hasSelection, dragging
         frameNode(node.id)
       }}
     >
-      <div className="canvas-card-accent" />
-      <div className="canvas-card-body">
-        <div className="node-card-top">
-          <button
-            className="node-status-dot clickable"
-            style={{ background: STATUS_COLOR[node.status] }}
-            title={`${STATUS_LABEL[node.status]} — click to advance`}
-            onMouseDown={(e) => e.stopPropagation()}
-            onClick={(e) => {
-              e.stopPropagation()
-              const next = NEXT_STATUS[node.status]
-              updateNode(node.id, { status: next }, `marked "${node.title}" ${STATUS_LABEL[next]}`)
-            }}
-          />
-          <span className="node-type-chip">{TYPE_LABEL[node.type]}</span>
-          {branch && (
-            <span className="node-branch-chip" style={{ color: branch.color }}>
-              {branch.name}
-            </span>
-          )}
-        </div>
-        <div className="node-title">{node.title}</div>
-        <div className="node-meta">
-          {node.owner || 'Unassigned'} · {node.time}
-        </div>
-        {progress && progress.total > 0 && (
-          <div className="node-progress" title={`${progress.done}/${progress.total} sub-items done`}>
-            <div className="node-progress-bar">
-              <div className="node-progress-fill" style={{ width: `${(progress.done / progress.total) * 100}%` }} />
-            </div>
-            <span className="node-progress-label">
-              {progress.done}/{progress.total}
-            </span>
+      <div className="cc-top">
+        <button
+          className="cc-status"
+          style={{ background: STATUS_COLOR[node.status] }}
+          title={`${STATUS_LABEL[node.status]} — click to advance`}
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation()
+            const next = NEXT_STATUS[node.status]
+            updateNode(node.id, { status: next }, `marked "${node.title}" ${STATUS_LABEL[next]}`)
+          }}
+        />
+        <span className="cc-type" style={{ color: typeColor }}>
+          {TYPE_LABEL[node.type]}
+        </span>
+        <span className="cc-date">{node.time.slice(5)}</span>
+      </div>
+
+      <div className="cc-title">{node.title}</div>
+
+      {progress && progress.total > 0 && (
+        <div className="cc-progress" title={`${progress.done}/${progress.total} done`}>
+          <div className="cc-progress-track">
+            <div className="cc-progress-fill" style={{ width: `${(progress.done / progress.total) * 100}%` }} />
           </div>
-        )}
+          <span className="cc-progress-num">
+            {progress.done}/{progress.total}
+          </span>
+        </div>
+      )}
+
+      <div className="cc-foot">
+        <span className="cc-avatar" style={{ borderColor: branchColor, color: branchColor }}>
+          {(node.owner || '?').slice(0, 1).toUpperCase()}
+        </span>
+        <span className="cc-owner">{node.owner || 'Unassigned'}</span>
+        {branch && <span className="cc-branch">{branch.name}</span>}
       </div>
     </div>
   )

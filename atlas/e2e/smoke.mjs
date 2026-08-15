@@ -82,7 +82,7 @@ await page.waitForTimeout(300)
 
 ok('canvas renders', !!(await page.$('.canvas-viewport')))
 ok('seed nodes render', (await page.$$('.canvas-card')).length >= 10)
-ok('three altitude bands labelled', (await page.$$('.band-label-name')).length === 3)
+ok('three altitude bands labelled', (await page.$$('.band-header')).length === 3)
 
 // --- outline + fly-to ---
 await page.click('.tab:has-text("Outline")')
@@ -185,7 +185,7 @@ await seanRow.click()
 await page.waitForTimeout(300)
 
 // --- progress rollup ---
-ok('a parent card shows child progress', !!(await page.$('.node-progress')))
+ok('a parent card shows child progress', !!(await page.$('.cc-progress')))
 
 // --- search: Enter flies to the match ---
 await page.fill('.search input', 'Jared')
@@ -195,7 +195,7 @@ const searchedTitle = await page.$eval('.insp-title', (e) => e.value).catch(() =
 ok('search + Enter flies to and selects the match', searchedTitle.includes('Jared'))
 
 // --- status dot click advances status (blocked → doing) ---
-await page.click('.canvas-card.sel button.node-status-dot')
+await page.click('.canvas-card.sel .cc-status')
 await page.waitForTimeout(300)
 const statusVal = await page.$eval('.insp-grid label:nth-child(3) select', (e) => e.value).catch(() => null)
 ok('clicking the status dot advances status', statusVal === 'doing')

@@ -1,33 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '../store'
 import { matches } from '../lib/layout'
-import { LEVEL_LABEL, LEVEL_BLURB } from '../config'
-import {
-  LEVELS,
-  BAND_H,
-  bandTop,
-  bandCenterY,
-  yToLevel,
-  nodeXY,
-  timeToX,
-  xToTime,
-  clampBandOffset,
-  CANVAS_BOTTOM,
-  CARD_W,
-  CARD_H,
-} from './layout2d'
+import { LEVEL_LABEL } from '../config'
+import { computeLayout, levelAtY, timeToX, xToTime } from './layout2d'
 import { EdgeLayer } from './EdgeLayer'
 import { NodeCard } from './NodeCard'
 
-const MIN_SCALE = 0.25
-const MAX_SCALE = 2.2
-const WORLD_MIN_X = -2600
-const WORLD_MAX_X = 8000
+const MIN_SCALE = 0.3
+const MAX_SCALE = 1.8
 
 const BAND_TINT: Record<string, string> = {
-  strategy: 'rgba(58,54,96,0.16)',
-  project: 'rgba(44,58,74,0.16)',
-  execution: 'rgba(42,58,52,0.16)',
+  strategy: 'rgba(139,124,255,0.05)',
+  project: 'rgba(90,169,230,0.04)',
+  execution: 'rgba(75,208,160,0.045)',
+}
+const BAND_DOT: Record<string, string> = {
+  strategy: '#8b7cff',
+  project: '#5aa9e6',
+  execution: '#4bd0a0',
 }
 
 interface Interaction {
@@ -57,9 +47,8 @@ export function Canvas() {
   const clearFrame = useStore((s) => s.clearFrame)
 
   const viewportRef = useRef<HTMLDivElement>(null)
-  const [pan, setPan] = useState({ x: 200, y: 90 })
+  const [pan, setPan] = useState({ x: 220, y: 120 })
   const [scale, setScale] = useState(0.75)
-  // refs mirror pan/scale for synchronous reads inside rAF + pointer handlers
   const panRef = useRef(pan)
   const scaleRef = useRef(scale)
   const [drag, setDrag] = useState<{ id: string; x: number; y: number } | null>(null)
@@ -74,11 +63,12 @@ export function Canvas() {
     setScale(s)
   }
 
+  const layout = useMemo(() => computeLayout(Object.values(nodes)), [nodes])
+
   const nodeList = useMemo(
     () => Object.values(nodes).filter((n) => (filters.hideNonMatching ? matches(n, filters) : true)),
     [nodes, filters],
   )
-
   const matchedSet = useMemo(() => {
     const s = new Set<string>()
     for (const n of Object.values(nodes)) if (matches(n, filters)) s.add(n.id)
@@ -108,74 +98,66 @@ export function Canvas() {
     return map
   }, [edges, nodes])
 
-  // world position of a node (live position if it's the one being dragged)
-  const posOf = (id: string) => {
-    if (drag && drag.id === id) return { x: drag.x, y: drag.y }
-    const n = nodes[id]
-    return n ? nodeXY(n) : undefined
-  }
+  const posOf = (id: string) => (drag && drag.id === id ? { x: drag.x, y: drag.y } : layout.pos[id])
 
   const screenToWorld = (clientX: number, clientY: number, p = panRef.current, s = scaleRef.current) => {
     const rect = viewportRef.current!.getBoundingClientRect()
     return { x: (clientX - rect.left - p.x) / s, y: (clientY - rect.top - p.y) / s }
   }
 
-  // ---- frame animation (fit all / focus one) — time-based easeOutCubic ----
+  // ---- frame animation ----
   const animateTo = (targetPan: { x: number; y: number }, targetScale: number) => {
     if (animRef.current) cancelAnimationFrame(animRef.current)
     const sp = { ...panRef.current }
     const ss = scaleRef.current
     const dur = 360
     let start = -1
-    const step = (now: number) => {
+    const stepFn = (now: number) => {
       if (start < 0) start = now
       const t = Math.min(1, (now - start) / dur)
       const e = 1 - Math.pow(1 - t, 3)
       applyView(sp.x + (targetPan.x - sp.x) * e, sp.y + (targetPan.y - sp.y) * e, ss + (targetScale - ss) * e)
-      if (t < 1) animRef.current = requestAnimationFrame(step)
+      if (t < 1) animRef.current = requestAnimationFrame(stepFn)
       else animRef.current = null
     }
-    animRef.current = requestAnimationFrame(step)
+    animRef.current = requestAnimationFrame(stepFn)
   }
+
+  // Chrome insets so content frames inside the visible area, clear of the
+  // floating side panel (left), inspector (right, when open), toolbar + month rail.
+  const insets = () => ({
+    left: 250,
+    right: selectedId ? 360 : 32,
+    top: 72,
+    bottom: 48,
+  })
 
   const fitAll = () => {
     const rect = viewportRef.current?.getBoundingClientRect()
     if (!rect) return
-    const list = Object.values(nodes)
-    if (list.length === 0) {
-      animateTo({ x: rect.width / 2, y: rect.height / 3 }, 0.8)
-      return
-    }
-    let minX = Infinity,
-      maxX = -Infinity,
-      minY = Infinity,
-      maxY = -Infinity
-    for (const n of list) {
-      const { x, y } = nodeXY(n)
-      minX = Math.min(minX, x)
-      maxX = Math.max(maxX, x)
-      minY = Math.min(minY, y)
-      maxY = Math.max(maxY, y)
-    }
-    const pad = 120
-    const w = maxX - minX + CARD_W + pad * 2
-    const h = maxY - minY + CARD_H + pad * 2
-    const ts = Math.max(MIN_SCALE, Math.min(1.1, Math.min(rect.width / w, rect.height / h)))
-    const cx = (minX + maxX) / 2
-    const cy = (minY + maxY) / 2
-    animateTo({ x: rect.width / 2 - cx * ts, y: rect.height / 2 - cy * ts }, ts)
+    const ins = insets()
+    const availW = Math.max(200, rect.width - ins.left - ins.right)
+    const availH = Math.max(200, rect.height - ins.top - ins.bottom)
+    const pad = 70
+    const w = Math.max(400, layout.maxX - layout.minX) + pad * 2
+    const h = Math.max(300, layout.totalHeight) + pad * 2
+    const ts = Math.max(MIN_SCALE, Math.min(1.1, Math.min(availW / w, availH / h)))
+    const cx = (layout.minX + layout.maxX) / 2
+    const cy = layout.totalHeight / 2
+    animateTo({ x: ins.left + availW / 2 - cx * ts, y: ins.top + availH / 2 - cy * ts }, ts)
   }
 
   const focusOne = (id: string) => {
     const rect = viewportRef.current?.getBoundingClientRect()
-    const n = nodes[id]
-    if (!rect || !n) return
-    const { x, y } = nodeXY(n)
-    const ts = Math.max(scaleRef.current, 0.9)
-    animateTo({ x: rect.width / 2 - x * ts, y: rect.height / 2 - y * ts }, ts)
+    const p = layout.pos[id]
+    if (!rect || !p) return
+    const ins = insets()
+    const ts = Math.max(scaleRef.current, 0.85)
+    const availW = Math.max(200, rect.width - ins.left - ins.right)
+    const availH = Math.max(200, rect.height - ins.top - ins.bottom)
+    animateTo({ x: ins.left + availW / 2 - p.x * ts, y: ins.top + availH / 2 - p.y * ts }, ts)
   }
 
-  // consume frame requests from the store (outline click, ⤢ Frame all, search)
   useEffect(() => {
     if (!frameRequest) return
     if (frameRequest.kind === 'all') fitAll()
@@ -184,7 +166,6 @@ export function Canvas() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [frameRequest])
 
-  // fit once on first mount after layout is known
   useEffect(() => {
     if (didInitialFit.current) return
     didInitialFit.current = true
@@ -203,15 +184,12 @@ export function Canvas() {
     const p = panRef.current
     const factor = Math.exp(-e.deltaY * 0.0015)
     const ns = Math.max(MIN_SCALE, Math.min(MAX_SCALE, s * factor))
-    // keep the world point under the cursor fixed
     const wx = (cx - p.x) / s
     const wy = (cy - p.y) / s
     applyView(cx - wx * ns, cy - wy * ns, ns)
   }
 
-  // Dragging + panning use MOUSE events with per-interaction window listeners.
-  // (Mouse events are dispatched by every browser AND by automated harnesses;
-  // pointer events aren't always synthesised, which made drags untestable.)
+  // ---- pan + drag via mouse events (universally dispatched) ----
   const lastMoved = useRef(false)
 
   const beginInteraction = (it: Interaction) => {
@@ -240,10 +218,9 @@ export function Canvas() {
     document.body.style.cursor = 'grabbing'
   }
 
-  // called by NodeCard on mousedown
   const startNodeDrag = (e: React.MouseEvent, id: string) => {
     const w = screenToWorld(e.clientX, e.clientY)
-    const c = nodeXY(nodes[id])
+    const c = layout.pos[id] ?? { x: w.x, y: w.y }
     beginInteraction({
       kind: 'drag',
       id,
@@ -279,8 +256,7 @@ export function Canvas() {
     const it = interaction.current
     if (!it) return
     if (it.kind === 'drag' && it.id && it.moved && it.lastX != null && it.lastY != null) {
-      const level = yToLevel(it.lastY)
-      placeNode(it.id, xToTime(it.lastX), level, clampBandOffset(it.lastY - bandCenterY(level)))
+      placeNode(it.id, xToTime(it.lastX), levelAtY(it.lastY, layout.bands))
     }
     lastMoved.current = it.moved
     document.body.style.cursor = ''
@@ -299,24 +275,23 @@ export function Canvas() {
 
   const onViewportDoubleClick = (e: React.MouseEvent) => {
     const w = screenToWorld(e.clientX, e.clientY)
-    const level = yToLevel(w.y)
+    const level = levelAtY(w.y, layout.bands)
     const type = level === 'strategy' ? 'strategy' : 'task'
     addNode({ level, type, time: xToTime(w.x), title: 'New node' })
   }
 
-  const worldStyle = {
-    transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`,
-    transformOrigin: '0 0',
-  }
+  const worldStyle = { transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`, transformOrigin: '0 0' }
 
-  // month gridlines within the visible-ish range
+  const bgLeft = layout.minX - 800
+  const bgWidth = layout.maxX - layout.minX + 1600
+
   const months = useMemo(() => {
-    const out: { iso: string; label: string; x: number }[] = []
+    const out: { iso: string; label: string; x: number; year: boolean }[] = []
     const names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
     for (let y = 2025; y <= 2027; y++)
       for (let m = 0; m < 12; m++) {
         const iso = `${y}-${String(m + 1).padStart(2, '0')}-01`
-        out.push({ iso, label: `${names[m]}${m === 0 ? " '" + String(y).slice(2) : ''}`, x: timeToX(iso) })
+        out.push({ iso, label: m === 0 ? `${names[m]} ${y}` : names[m], x: timeToX(iso), year: m === 0 })
       }
     return out
   }, [])
@@ -333,25 +308,25 @@ export function Canvas() {
     >
       <div className="canvas-world" style={worldStyle}>
         {/* altitude bands */}
-        {LEVELS.map((level) => (
+        {layout.bands.map((b, i) => (
           <div
-            key={level}
+            key={b.level}
             className="canvas-band"
-            style={{
-              left: WORLD_MIN_X,
-              top: bandTop(level),
-              width: WORLD_MAX_X - WORLD_MIN_X,
-              height: BAND_H,
-              background: BAND_TINT[level],
-            }}
-          />
+            style={{ left: bgLeft, top: b.top, width: bgWidth, height: b.height, background: BAND_TINT[b.level] }}
+          >
+            {i > 0 && <div className="canvas-band-sep" />}
+          </div>
         ))}
         {/* month gridlines */}
         {months.map((m) => (
-          <div key={m.iso} className="canvas-gridline" style={{ left: m.x, top: 0, height: CANVAS_BOTTOM }} />
+          <div
+            key={m.iso}
+            className={`canvas-gridline ${m.year ? 'year' : ''}`}
+            style={{ left: m.x, top: 0, height: layout.totalHeight }}
+          />
         ))}
         {/* NOW line */}
-        <div className="canvas-now" style={{ left: nowX, top: -20, height: CANVAS_BOTTOM + 40 }} />
+        <div className="canvas-now" style={{ left: nowX, top: -10, height: layout.totalHeight + 20 }} />
 
         <EdgeLayer
           edges={Object.values(edges)}
@@ -362,7 +337,8 @@ export function Canvas() {
         />
 
         {nodeList.map((n) => {
-          const p = posOf(n.id)!
+          const p = posOf(n.id)
+          if (!p) return null
           return (
             <NodeCard
               key={n.id}
@@ -380,20 +356,20 @@ export function Canvas() {
         })}
       </div>
 
-      {/* screen-space band labels (left gutter) */}
-      <div className="band-labels">
-        {LEVELS.map((level) => (
-          <div key={level} className="band-label" style={{ top: bandCenterY(level) * scale + pan.y }}>
-            <div className="band-label-name">{LEVEL_LABEL[level]}</div>
-            <div className="band-label-blurb">{LEVEL_BLURB[level]}</div>
+      {/* band headers (screen-space, pinned left, follow vertical pan) */}
+      <div className="band-headers">
+        {layout.bands.map((b) => (
+          <div key={b.level} className="band-header" style={{ top: b.top * scale + pan.y + 12 }}>
+            <span className="band-header-dot" style={{ background: BAND_DOT[b.level] }} />
+            {LEVEL_LABEL[b.level]}
           </div>
         ))}
       </div>
 
-      {/* screen-space month labels (bottom) + NOW */}
+      {/* month labels + NOW (screen-space, pinned bottom) */}
       <div className="month-labels">
         {months.map((m) => (
-          <div key={m.iso} className="month-label" style={{ left: m.x * scale + pan.x }}>
+          <div key={m.iso} className={`month-label ${m.year ? 'year' : ''}`} style={{ left: m.x * scale + pan.x }}>
             {m.label}
           </div>
         ))}

@@ -84,8 +84,8 @@ interface Actions {
   addNode: (partial?: Partial<AtlasNode>) => string
   updateNode: (id: string, patch: Partial<AtlasNode>, message?: string) => void
   moveNode: (id: string, offset: { x: number; y: number; z: number }) => void
-  /** 2D drop: set time (from world x), altitude (from world y band), within-band offset. */
-  placeNode: (id: string, time: string, level: Level, offsetY: number) => void
+  /** 2D drop: set time (from world x) and altitude (from world y band). */
+  placeNode: (id: string, time: string, level: Level) => void
   deleteNode: (id: string) => void
 
   addEdge: (from: string, to: string, kind: EdgeKind) => void
@@ -237,7 +237,7 @@ export const useStore = create<State & Actions>()(
         })
       },
 
-      placeNode: (id, time, level, offsetY) => {
+      placeNode: (id, time, level) => {
         set((s) => {
           const prev = s.nodes[id]
           if (!prev) return s
@@ -246,7 +246,7 @@ export const useStore = create<State & Actions>()(
             ...prev,
             time,
             level,
-            offset: { x: 0, y: offsetY, z: 0 },
+            offset: { x: 0, y: 0, z: 0 },
             pinned: true,
             updatedAt: Date.now(),
           }
