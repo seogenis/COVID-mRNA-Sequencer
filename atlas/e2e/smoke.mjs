@@ -220,6 +220,16 @@ const allVisible = await page.$$eval('.canvas-card', (els) => els.length)
 ok('Executive preset hides the execution band', execVisible < allVisible)
 await page.click('button.seg:has-text("All")')
 
+// --- organized (grouped) layout ---
+const beforePos = await page.$eval('.canvas-card', (e) => e.style.left)
+await page.click('.lt:has-text("Organized")')
+await page.waitForTimeout(1200)
+ok('Organized layout shows branch columns', (await page.$$('.branch-col-label')).length === 3)
+const afterPos = await page.$eval('.canvas-card', (e) => e.style.left)
+ok('switching layout repositions cards', beforePos !== afterPos)
+await page.click('.lt:has-text("Timeline")')
+await page.waitForTimeout(800)
+
 // --- history ---
 await page.click('button:has-text("History")')
 await page.waitForTimeout(300)

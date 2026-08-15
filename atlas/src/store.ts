@@ -104,6 +104,7 @@ interface Actions {
   toggleBranch: (id: string) => void
   toggleOwner: (owner: string) => void
   setFocus: (f: FocusPreset) => void
+  setLayoutMode: (m: 'timeline' | 'grouped') => void
 
   undo: () => void
 
@@ -133,6 +134,7 @@ interface State {
   commits: Commit[]
   filters: Filters
   focus: FocusPreset
+  layoutMode: 'timeline' | 'grouped'
   selectedId: string | null
   linkingFrom: string | null
   linkKind: EdgeKind
@@ -172,6 +174,7 @@ export const useStore = create<State & Actions>()(
       commits: [],
       filters: defaultFilters(),
       focus: 'all',
+      layoutMode: 'timeline',
       selectedId: null,
       linkingFrom: null,
       linkKind: 'hierarchy',
@@ -442,6 +445,7 @@ export const useStore = create<State & Actions>()(
           }
           return { focus: f, filters: { ...s.filters, levels } }
         }),
+      setLayoutMode: (m) => set({ layoutMode: m }),
 
       select: (id) => set({ selectedId: id, linkingFrom: null }),
       startLinking: (id, kind) => set({ linkingFrom: id, linkKind: kind }),
@@ -546,6 +550,7 @@ export const useStore = create<State & Actions>()(
         commits: s.commits,
         filters: s.filters,
         focus: s.focus,
+        layoutMode: s.layoutMode,
         me: s.me,
         settings: s.settings,
       }),

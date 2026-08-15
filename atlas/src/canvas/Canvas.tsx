@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '../store'
 import { matches } from '../lib/layout'
 import { LEVEL_LABEL } from '../config'
-import { computeLayout, levelAtY, timeToX, xToTime } from './layout2d'
+import { computeLayout, computeGroupedLayout, levelAtY, timeToX, xToTime, type GroupedLayout } from './layout2d'
 import { EdgeLayer } from './EdgeLayer'
 import { NodeCard } from './NodeCard'
 
@@ -37,7 +37,9 @@ interface Interaction {
 export function Canvas() {
   const nodes = useStore((s) => s.nodes)
   const edges = useStore((s) => s.edges)
+  const branches = useStore((s) => s.branches)
   const filters = useStore((s) => s.filters)
+  const layoutMode = useStore((s) => s.layoutMode)
   const selectedId = useStore((s) => s.selectedId)
   const select = useStore((s) => s.select)
   const cancelLinking = useStore((s) => s.cancelLinking)
@@ -63,7 +65,13 @@ export function Canvas() {
     setScale(s)
   }
 
-  const layout = useMemo(() => computeLayout(Object.values(nodes)), [nodes])
+  const layout = useMemo(
+    () =>
+      layoutMode === 'grouped'
+        ? computeGroupedLayout(Object.values(nodes), branches)
+        : computeLayout(Object.values(nodes)),
+    [nodes, branches, layoutMode],
+  )
 
   const nodeList = useMemo(
     () => Object.values(nodes).filter((n) => (filters.hideNonMatching ? matches(n, filters) : true)),
@@ -174,6 +182,14 @@ export function Canvas() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // refit when switching layout mode
+  useEffect(() => {
+    if (!didInitialFit.current) return
+    const t = setTimeout(fitAll, 20)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layoutMode])
+
   // ---- wheel zoom to cursor ----
   const onWheel = (e: React.WheelEvent) => {
     if (animRef.current) cancelAnimationFrame(animRef.current)
@@ -256,7 +272,10 @@ export function Canvas() {
     const it = interaction.current
     if (!it) return
     if (it.kind === 'drag' && it.id && it.moved && it.lastX != null && it.lastY != null) {
-      placeNode(it.id, xToTime(it.lastX), levelAtY(it.lastY, layout.bands))
+      // In grouped mode x is structural, not time — keep the node's date, only
+      // let the vertical drop change its altitude.
+      const time = layoutMode === 'timeline' ? xToTime(it.lastX) : (nodes[it.id]?.time ?? xToTime(it.lastX))
+      placeNode(it.id, time, levelAtY(it.lastY, layout.bands))
     }
     lastMoved.current = it.moved
     document.body.style.cursor = ''
@@ -277,13 +296,15 @@ export function Canvas() {
     const w = screenToWorld(e.clientX, e.clientY)
     const level = levelAtY(w.y, layout.bands)
     const type = level === 'strategy' ? 'strategy' : 'task'
-    addNode({ level, type, time: xToTime(w.x), title: 'New node' })
+    // grouped mode ignores x-as-time, so a new node just takes today's date
+    addNode({ level, type, time: layoutMode === 'timeline' ? xToTime(w.x) : undefined, title: 'New node' })
   }
 
   const worldStyle = { transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`, transformOrigin: '0 0' }
 
   const bgLeft = layout.minX - 800
   const bgWidth = layout.maxX - layout.minX + 1600
+  const columns = layoutMode === 'grouped' && 'columns' in layout ? (layout as GroupedLayout).columns : []
 
   const months = useMemo(() => {
     const out: { iso: string; label: string; x: number; year: boolean }[] = []
@@ -317,16 +338,18 @@ export function Canvas() {
             {i > 0 && <div className="canvas-band-sep" />}
           </div>
         ))}
-        {/* month gridlines */}
-        {months.map((m) => (
-          <div
-            key={m.iso}
-            className={`canvas-gridline ${m.year ? 'year' : ''}`}
-            style={{ left: m.x, top: 0, height: layout.totalHeight }}
-          />
-        ))}
-        {/* NOW line */}
-        <div className="canvas-now" style={{ left: nowX, top: -10, height: layout.totalHeight + 20 }} />
+        {/* month gridlines + NOW (timeline mode only) */}
+        {layoutMode === 'timeline' &&
+          months.map((m) => (
+            <div
+              key={m.iso}
+              className={`canvas-gridline ${m.year ? 'year' : ''}`}
+              style={{ left: m.x, top: 0, height: layout.totalHeight }}
+            />
+          ))}
+        {layoutMode === 'timeline' && (
+          <div className="canvas-now" style={{ left: nowX, top: -10, height: layout.totalHeight + 20 }} />
+        )}
 
         <EdgeLayer
           edges={Object.values(edges)}
@@ -356,6 +379,30 @@ export function Canvas() {
         })}
       </div>
 
+      {/* branch column labels (grouped mode) */}
+      {columns.length > 0 && (
+        <div className="branch-cols">
+          {columns.map((c) => {
+            const b = branches[c.id]
+            if (!b) return null
+            return (
+              <div
+                key={c.id}
+                className="branch-col-label"
+                style={{
+                  left: (c.start + c.width / 2) * scale + pan.x,
+                  top: layout.bands[0].top * scale + pan.y - 4,
+                  color: b.color,
+                  borderColor: b.color,
+                }}
+              >
+                {b.name}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
       {/* band headers (screen-space, pinned left, follow vertical pan) */}
       <div className="band-headers">
         {layout.bands.map((b) => (
@@ -366,17 +413,19 @@ export function Canvas() {
         ))}
       </div>
 
-      {/* month labels + NOW (screen-space, pinned bottom) */}
-      <div className="month-labels">
-        {months.map((m) => (
-          <div key={m.iso} className={`month-label ${m.year ? 'year' : ''}`} style={{ left: m.x * scale + pan.x }}>
-            {m.label}
+      {/* month labels + NOW (screen-space, pinned bottom) — timeline mode only */}
+      {layoutMode === 'timeline' && (
+        <div className="month-labels">
+          {months.map((m) => (
+            <div key={m.iso} className={`month-label ${m.year ? 'year' : ''}`} style={{ left: m.x * scale + pan.x }}>
+              {m.label}
+            </div>
+          ))}
+          <div className="now-flag" style={{ left: nowX * scale + pan.x }}>
+            NOW
           </div>
-        ))}
-        <div className="now-flag" style={{ left: nowX * scale + pan.x }}>
-          NOW
         </div>
-      </div>
+      )}
     </div>
   )
 }

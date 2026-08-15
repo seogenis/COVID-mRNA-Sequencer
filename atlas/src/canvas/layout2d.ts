@@ -1,4 +1,4 @@
-import type { AtlasNode, Level } from '../types'
+import type { AtlasNode, Branch, Level } from '../types'
 
 // ---------------------------------------------------------------------------
 // 2D swimlane layout.
@@ -101,4 +101,73 @@ export function levelAtY(y: number, bands: BandInfo[]): Level {
   for (const b of bands) if (y >= b.top && y < b.top + b.height) return b.level
   if (bands.length && y < bands[0].top) return bands[0].level
   return bands.length ? bands[bands.length - 1].level : 'project'
+}
+
+// ---------------------------------------------------------------------------
+// Grouped ("auto-organize") layout — a branch × altitude grid.
+//
+// Each branch gets a vertical column REGION whose x-extent is the same across
+// all three bands, so a branch's strategy / project / execution cards line up
+// as a tidy column. Within a region+band, cards pack left-to-right by date.
+// The result groups every strategic thread together and reads as clean columns
+// crossed by the three altitude rows — the hierarchy edges then draw the tree.
+// ---------------------------------------------------------------------------
+
+export interface BranchColumn {
+  id: string
+  start: number
+  width: number
+}
+
+export interface GroupedLayout extends Layout {
+  columns: BranchColumn[]
+}
+
+const PITCH = CARD_W + 24
+const BRANCH_GAP = 90
+
+export function computeGroupedLayout(nodes: AtlasNode[], branches: Record<string, Branch>): GroupedLayout {
+  const branchOrder = Object.values(branches)
+    .sort((a, b) => a.lane - b.lane)
+    .map((b) => b.id)
+  const extra = [...new Set(nodes.map((n) => n.branchId))].filter((b) => !branchOrder.includes(b))
+  const order = [...branchOrder, ...extra].filter((bid) => nodes.some((n) => n.branchId === bid))
+
+  const columns: BranchColumn[] = []
+  const start: Record<string, number> = {}
+  let runningX = 0
+  for (const bid of order) {
+    const maxCount = Math.max(1, ...LEVELS.map((l) => nodes.filter((n) => n.branchId === bid && n.level === l).length))
+    const width = maxCount * PITCH - GAP_X
+    start[bid] = runningX
+    columns.push({ id: bid, start: runningX, width })
+    runningX += width + BRANCH_GAP
+  }
+
+  const pos: Record<string, { x: number; y: number }> = {}
+  const bands: BandInfo[] = []
+  let top = 0
+  let minX = Infinity
+  let maxX = -Infinity
+  for (const level of LEVELS) {
+    const y = top + BAND_PAD + ROW_H / 2
+    for (const bid of order) {
+      const cell = nodes
+        .filter((n) => n.branchId === bid && n.level === level)
+        .sort((a, b) => a.time.localeCompare(b.time))
+      cell.forEach((n, i) => {
+        const x = start[bid] + i * PITCH + CARD_W / 2
+        pos[n.id] = { x, y }
+        minX = Math.min(minX, x - CARD_W / 2)
+        maxX = Math.max(maxX, x + CARD_W / 2)
+      })
+    }
+    bands.push({ level, top, height: BAND_PAD * 2 + ROW_H, rows: 1 })
+    top += BAND_PAD * 2 + ROW_H
+  }
+  if (minX === Infinity) {
+    minX = 0
+    maxX = 0
+  }
+  return { pos, bands, totalHeight: top, minX, maxX, columns }
 }

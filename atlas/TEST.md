@@ -57,25 +57,28 @@ smoke test — no key or network needed.
 3. **Drag a card** — this is the gesture that was broken before. Grab any card
    and move it: **up/down across a band changes its altitude**, sideways
    changes its date. Drop it and the inspector reflects the new level.
-4. **Outline** tab (left panel) — click any node to fly to it. Double-clicking
+4. **Organized layout**: hit **❖ Organized** (bottom-right) — the space
+   auto-arranges into a tidy branch × altitude grid with labelled columns.
+   **◱ Timeline** switches back to the date view.
+5. **Outline** tab (left panel) — click any node to fly to it. Double-clicking
    a card on the canvas does the same.
-5. **Create in place**: double-click empty canvas — the node is born with that
+6. **Create in place**: double-click empty canvas — the node is born with that
    spot's date and altitude, ready to title.
-6. **Edit**: click a card → inspector (right). Its connected cards light up and
+7. **Edit**: click a card → inspector (right). Its connected cards light up and
    the rest dim. Notice parents show a progress bar rolling up their children
    (e.g. *Qualify 3 actuator suppliers* → 1/2).
-7. **People**: Filters → *People* — uncheck someone to fade their work out.
+8. **People**: Filters → *People* — uncheck someone to fade their work out.
    That plus **Executive / Builder** is the "what matters to me" view.
-8. **Search**: type in the top bar (match count shows) and press **Enter** to
+9. **Search**: type in the top bar (match count shows) and press **Enter** to
    fly to each match in turn.
-9. **Check things off in place**: click the status dot on any card to advance
-   it (todo → doing → done) — watch the parent's progress bar move.
-10. **Link**: in the inspector click *depends on →*, then click another card.
-11. **Undo**: delete something with Backspace, bring it back with **Ctrl/⌘+Z**
+10. **Check things off in place**: click the status dot on any card to advance
+    it (todo → doing → done) — watch the parent's progress bar move.
+11. **Link**: in the inspector click *depends on →*, then click another card.
+12. **Undo**: delete something with Backspace, bring it back with **Ctrl/⌘+Z**
     (or the ↩ button).
-12. **History**: edit someone else's strategy node (owner ≠ you) and see it
+13. **History**: edit someone else's strategy node (owner ≠ you) and see it
     flagged for approval.
-13. **AI** (dev build + key): ✦ → *Compose* → paste a messy paragraph of
+14. **AI** (dev build + key): ✦ → *Compose* → paste a messy paragraph of
     company thoughts → *Structure this* → review → *Add to space*. Then select
     a strategy node → *Break into projects*.
 

@@ -42,6 +42,10 @@ drag it sideways and it reschedules. Where you put it *is* what it means.
 
 - **Navigate** — drag the background to pan, scroll to zoom (toward the cursor).
   **Double-click a card** to zoom to it; **F** / **⤢ Frame all** fits everything.
+- **Two layouts** (toggle, bottom-right): **Timeline** places cards by date;
+  **Organized** auto-arranges them into a tidy branch × altitude grid — every
+  strategic thread becomes its own labelled column crossed by the three bands,
+  so the structure reads at a glance.
 - **Outline view** — a Notion-style list of every node by branch → altitude in
   the left panel; click to fly there.
 - **First-run onboarding** — a dismissible overlay explains the layout and
