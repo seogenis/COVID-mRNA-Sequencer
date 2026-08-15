@@ -420,3 +420,24 @@ compliance guardrails exist.
 - **Geographic focus** for the first campaign (one metro + one vertical to start).
 - **Which MCP tools to prototype with** (Higgsfield for generation, Calendly for
   booking) vs. build custom from day one.
+
+---
+
+## 12. Implementation status
+
+The MVP in this folder now implements, end-to-end and fully tested offline:
+
+- ✅ Full mock funnel (discover → qualify → sitegen → cadence outreach → convert)
+- ✅ Multi-day cadence engine (`cadence.py`): email d0 → voice d1 → follow-up d3
+  → honest breakup d7, with per-lead stop conditions (interested/declined/DNC)
+- ✅ A/B testing of intro subject + call opener, with per-variant funnel stats
+- ✅ Truthful-outreach invariant: copy adapts to whether the lead has a site
+  (never claims "can't find you online" to a business that has a website)
+- ✅ Live providers (stdlib-only, offline-tested via fake transports):
+  Google Places discovery, heuristic presence audit, Anthropic content writer
+  (grounding enforced in code), SMTP email (CAN-SPAM footer required),
+  Stripe Checkout (webhook-confirmed), Vapi voice (double-gated)
+- ✅ Dashboard: funnel, A/B table, human review queue, close queue, audit trails
+- ✅ `doctor` command: configuration status + what each missing key unlocks
+- ⛔ Live enrichment (broker choice pending) · Stripe/Vapi webhook receivers ·
+  metro grid-tiling · deploy-to-production (LIVE status) flow

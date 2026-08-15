@@ -199,7 +199,10 @@ class MockContentWriter(ContentWriter):
 class MockEmail(EmailProvider):
     def send(self, lead: Lead, subject: str, body: str) -> str:
         settings.ensure_dirs()
-        path = settings.outbox_dir / f"{lead.id}_email.txt"
+        # Number artifacts per touch — a single path would overwrite earlier
+        # emails and corrupt the audit trail.
+        n = sum(1 for a in lead.outreach if a.channel == "email") + 1
+        path = settings.outbox_dir / f"{lead.id}_email_{n}.txt"
         to = lead.contacts.emails[0] if lead.contacts.emails else "unknown@example"
         path.write_text(
             f"To: {to}\nSubject: {subject}\n\n{body}\n", encoding="utf-8"
@@ -216,18 +219,17 @@ class MockVoice(VoiceProvider):
     always opens with the required AI disclosure line.
     """
 
-    def call(self, lead: Lead) -> dict:
+    def call(self, lead: Lead, script: dict) -> dict:
         rng = random.Random(f"{settings.seed}:voice:{lead.id}")
         roll = rng.random()
-        first = lead.contacts.owner_name.split()[0] if lead.contacts.owner_name else "there"
         disclosure = AI_DISCLOSURE_LINE.format(company="Autopilot Web")
 
+        # Disposition is seeded ONLY by lead id (not variant), so mock A/B
+        # outcomes stay symmetric — the mock never fakes a winning variant.
         lines = [
             f"AGENT: {disclosure}",
             f"OWNER: Uh, sure, who is this?",
-            (f"AGENT: I actually already built a brand-new website for "
-             f"{lead.business.name} — it's live for you to look at, free. "
-             f"Can I text you the link?"),
+            f"AGENT: {script.get('opener', 'I built you a website — want the link?')}",
         ]
         if roll < 0.20:
             disposition, tail = "not_interested", [

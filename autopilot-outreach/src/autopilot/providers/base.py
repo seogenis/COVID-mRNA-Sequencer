@@ -48,8 +48,10 @@ class EmailProvider(ABC):
 
 class VoiceProvider(ABC):
     @abstractmethod
-    def call(self, lead: Lead) -> dict:
-        """Place (or simulate) a call; return {disposition, transcript, artifact}."""
+    def call(self, lead: Lead, script: dict) -> dict:
+        """Place (or simulate) a call using a cadence.voice_script() dict;
+        return {disposition, transcript, artifact}. Implementations MUST open
+        with the AI-disclosure line before the script's hook."""
 
 
 class PaymentProvider(ABC):

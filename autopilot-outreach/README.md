@@ -32,24 +32,31 @@ That's it. `demo` will:
 2. **Score** each one's web presence (`no_site` / `outdated` / `decent` / `good`)
 3. **Reject** the ones with good sites; **qualify + enrich** the rest
 4. **Generate a real website** for each target → `data/demos/<id>/index.html`
-5. **Run compliance gates** (DNC scrub, calling-hours) then **email + AI-call**
-   each lead (artifacts written to `data/outbox/`)
-6. **Collect mock payment** from interested leads and report the funnel + revenue
+5. **Run the multi-day outreach cadence** through compliance gates (DNC scrub,
+   calling-hours, AI disclosure): intro email (day 0) → AI call (day 1) →
+   follow-up (day 3) → honest breakup email (day 7), simulated in one run.
+   Every touch is A/B-tested between two hooks; artifacts land in `data/outbox/`.
+6. **Collect mock payment** from interested leads and report the funnel,
+   revenue, and per-variant A/B performance
 
-Then the **dashboard** shows the funnel, per-lead audit trails, the call
-transcripts, and the generated sites themselves.
+Then the **dashboard** shows the funnel, A/B stats, the human **review queue**
+(QA-failed demos) and **close queue** (interested, payment pending), per-lead
+audit trails, call transcripts, and the generated sites themselves.
 
 ### Other commands
 
 ```bash
 python3 run.py demo --city Phoenix --category auto_repair --limit 15
 python3 run.py --seed 7 demo        # different (still deterministic) dataset
+python3 run.py tick --day 3         # manually advance the cadence one day
+python3 run.py stats                # A/B variant performance table
+python3 run.py doctor               # what's configured / what each key unlocks
 python3 run.py list                 # all leads + statuses
 python3 run.py show <lead_id>       # one lead's full audit trail
 python3 run.py summary              # funnel counts + revenue
 python3 run.py reset                # wipe local db + generated artifacts
 
-make test                           # run the test suite (10 tests, stdlib unittest)
+make test                           # run the test suite (30 tests, stdlib unittest)
 ```
 
 Verticals available in mock mode: `landscaping`, `auto_repair`, `plumbing`.
@@ -88,18 +95,36 @@ src/autopilot/
 tests/test_pipeline.py      # end-to-end + unit tests
 ```
 
+```
+  cadence.py                # multi-day touch plan, A/B variants, email/voice copy
+  providers/http.py         # stdlib HTTP client (proxy/CA aware) for live mode
+tests/test_live_providers.py  # live providers tested offline via fake transports
+```
+
 **The key design choice:** every external dependency (Google Places, presence
 analysis, LLM copywriting, email, voice, payment) sits behind an interface in
-`providers/base.py`. Mock implementations run offline; `live.py` has a
-documented stub for each, mapping to the real API and failing with a clear
-message until you implement it and supply a key. **Switching a stage from mock
-to live never touches pipeline code** — you implement one provider method at a
-time and that stage starts working.
+`providers/base.py`. Mock implementations run offline. **Switching a stage from
+mock to live never touches pipeline code.**
 
-To go live: set `APOP_MODE=live`, add keys (see `requirements.txt` and
-`config.py`), and fill in the providers in `src/autopilot/providers/live.py`.
-Start with discovery + presence + sitegen + email (lowest legal risk); wire the
-voice provider last and with the compliance guardrails in `compliance.py`. See
-`docs/DESIGN.md` §7 and §10 for the recommended build order and the legal
-constraints — the voice-cold-call piece is the part to scope down, not the
-centerpiece.
+### Live-provider status (all stdlib — even live mode needs no pip installs)
+
+| Stage | Implementation | Needs | Status |
+|---|---|---|---|
+| Discovery | Google Places API (New) `searchText` + pagination | `GOOGLE_PLACES_API_KEY` | ✅ implemented |
+| Presence | Heuristic site audit (HTTPS/viewport/copyright/booking/speed) | nothing | ✅ implemented |
+| Content | Anthropic Messages API, grounded + code-enforced service filter | `ANTHROPIC_API_KEY` | ✅ implemented |
+| Email | Any SMTP relay, CAN-SPAM footer enforced | `APOP_SMTP_*`, `APOP_FROM_EMAIL`, `APOP_POSTAL_ADDRESS` | ✅ implemented |
+| Payment | Stripe Checkout session → link; webhook confirms | `STRIPE_API_KEY` | ✅ implemented (webhook receiver TODO) |
+| Voice | Vapi outbound call, disclosure-first prompt | `VAPI_API_KEY` **and** `APOP_VOICE_ENABLED=1` | ✅ implemented, **double-gated** |
+| Enrichment | Data broker | pick a broker (commercial decision) | ⛔ stub |
+
+Every live provider takes an injectable transport, so its request-building and
+response-parsing logic is fully unit-tested offline (`tests/test_live_providers.py`)
+— you can debug live integrations before spending a cent on real API calls.
+Run `python3 run.py doctor` to see exactly what's configured and what each
+missing key unlocks.
+
+**Voice is deliberately double-gated**: a key alone won't place calls — you must
+also set `APOP_VOICE_ENABLED=1`, which exists as a speed bump to re-read
+`docs/DESIGN.md` §7 (TCPA/DNC/disclosure/consent) first. The gate is
+intentional; wire voice last, after the email funnel is proven.

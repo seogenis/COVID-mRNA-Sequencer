@@ -51,6 +51,45 @@ def _pill(status: str) -> str:
     return f'<span class="pill" style="background:{c}">{html.escape(status)}</span>'
 
 
+def _ab_table(leads) -> str:
+    from ..cadence import ab_stats
+    stats = ab_stats(leads)
+    if not stats:
+        return ""
+    rows = "".join(
+        f"<tr><td><b>Variant {v}</b></td><td>{s['leads']}</td><td>{s['emails']}</td>"
+        f"<td>{s['calls']}</td><td>{s['interested']}</td><td>{s['converted']}</td>"
+        f"<td>${s['revenue']:,}</td></tr>"
+        for v, s in sorted(stats.items())
+    )
+    return (
+        "<h3 style='margin-top:26px'>A/B script performance</h3>"
+        "<table><tr><th>Variant</th><th>Leads</th><th>Emails</th><th>Calls</th>"
+        "<th>Interested</th><th>Converted</th><th>Revenue</th></tr>"
+        f"{rows}</table>"
+    )
+
+
+def _queues(leads) -> str:
+    review = [l for l in leads if l.demo.path and not l.demo.qa_passed]
+    close = [l for l in leads
+             if l.status == "INTERESTED" and not l.billing.paid]
+    out = ""
+    if review:
+        items = "".join(
+            f"<li><a href='/lead/{l.id}'>{html.escape(l.business.name)}</a> — "
+            f"{html.escape(', '.join(l.demo.qa_notes))}</li>" for l in review)
+        out += (f"<h3 style='margin-top:26px'>🧐 Human review queue "
+                f"({len(review)})</h3><ul>{items}</ul>")
+    if close:
+        items = "".join(
+            f"<li><a href='/lead/{l.id}'>{html.escape(l.business.name)}</a> — "
+            f"quote ${l.billing.quote:,}, payment pending</li>" for l in close)
+        out += (f"<h3 style='margin-top:26px'>🤝 Close queue ({len(close)}) — "
+                f"human follow-up</h3><ul>{items}</ul>")
+    return out
+
+
 def _overview(store: LeadStore) -> str:
     leads = store.all()
     counts = store.counts()
@@ -87,6 +126,8 @@ def _overview(store: LeadStore) -> str:
         f"<table><tr><th>ID</th><th>Business</th><th>Vertical</th><th>City</th>"
         f"<th>Presence</th><th>Status</th><th>Demo</th></tr>"
         f"{''.join(rows)}</table>"
+        f"{_ab_table(leads)}"
+        f"{_queues(leads)}"
     )
     return body
 
@@ -104,7 +145,9 @@ def _lead_detail(store: LeadStore, lead_id: str) -> str:
             art = f"<pre>{html.escape(txt)}</pre>"
         except Exception:
             pass
-        outreach += f"<p><b>{a.channel}</b> — {a.disposition} ({a.at}){art}</p>"
+        meta = f"day {a.day} · {a.kind or a.channel} · variant {a.variant or '—'}"
+        outreach += (f"<p><b>{a.channel}</b> — {a.disposition} "
+                     f"<small>({meta}, {a.at})</small>{art}</p>")
 
     demo_link = (f"<p><a href='/demo/{ld.id}' target='_blank'>▶ Open generated demo site</a></p>"
                  if ld.demo.path else "")
@@ -118,6 +161,11 @@ def _lead_detail(store: LeadStore, lead_id: str) -> str:
         f"Rating: {ld.business.rating}★ ({ld.business.review_count})</p>"
         f"<p>Presence: <b>{ld.presence.category}</b> (score {ld.presence.score}) — "
         f"{html.escape(', '.join(ld.presence.issues))}</p>"
+        f"<p>Cadence: variant <b>{ld.cadence.variant or '—'}</b> · "
+        f"touch {ld.cadence.touch_index}/4 · "
+        f"{'stopped (' + ld.cadence.stop_reason + ')' if ld.cadence.stopped else ('exhausted' if ld.cadence.touch_index >= 4 else 'active')}"
+        f"{' · quote $' + format(ld.billing.quote, ',') if ld.billing.quote else ''}"
+        f"{' · <b>PAID</b>' if ld.billing.paid else ''}</p>"
         f"{demo_link}"
         f"<h3>Audit log</h3><pre>{html.escape(log)}</pre>"
         f"<h3>Outreach</h3>{outreach or '<p>None yet.</p>'}"

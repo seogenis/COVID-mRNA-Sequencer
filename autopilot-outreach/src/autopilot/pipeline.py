@@ -3,27 +3,46 @@
   NEW → QUALIFIED → DEMO_BUILT → CONTACTED → INTERESTED → CONVERTED
         (or REJECTED / DEAD at any gate)
 
-Each stage is small, idempotent, and appends to lead.log so you can trace
-exactly what happened to any lead (great for debugging). The whole thing runs
-synchronously and deterministically in mock mode.
+Outreach is cadence-driven (cadence.TOUCH_PLAN): intro email day 0, voice call
+day 1, follow-up email day 3, honest breakup email day 7. `tick(day)` executes
+every touch that is due; `run_campaign` simulates the full timeline in one
+process. In production, ticks are scheduled jobs on real dates.
 
-In production each stage would be a durable-workflow activity (Temporal) with
-retries and human-in-the-loop pauses; the logic here is the same.
+Each stage is small, idempotent, and appends to lead.log so you can trace
+exactly what happened to any lead (`python run.py show <id>`).
 """
 from __future__ import annotations
 
 from datetime import datetime, timezone
 
+from .cadence import (
+    CAMPAIGN_DAYS,
+    TOUCH_PLAN,
+    Touch,
+    assign_variant,
+    render_email,
+    voice_script,
+)
 from .compliance import outreach_allowed
 from .config import settings
 from .models import Lead, PresenceCategory, Status
 from .providers import build_providers
 from .sitegen import build_site
 
+# Statuses still eligible for further cadence touches.
+_ACTIVE = {Status.DEMO_BUILT.value, Status.CONTACTED.value}
+
 
 def _local_hour() -> int:
-    # Mock: use current UTC hour. Live: convert to the lead's timezone.
-    return datetime.now(timezone.utc).hour
+    """Hour used for the calling-hours compliance gate.
+
+    Mock mode uses a frozen 10:00 clock so runs are deterministic no matter
+    when you execute them (a real-clock gate made night-time test runs silently
+    skip the voice stage). Live mode must convert to the LEAD's timezone.
+    """
+    if settings.is_mock:
+        return 10
+    return datetime.now(timezone.utc).hour  # TODO(live): lead-local timezone
 
 
 def qa_demo(lead: Lead, copy: dict) -> tuple[bool, list[str]]:
@@ -31,7 +50,7 @@ def qa_demo(lead: Lead, copy: dict) -> tuple[bool, list[str]]:
 
     Catches the obvious failure modes (empty copy, hallucinated services not
     grounded in enrichment). In live mode add a Lighthouse threshold + an
-    LLM-as-judge pass; anything failing routes to a human review queue.
+    LLM-as-judge pass; anything failing routes to the human review queue.
     """
     notes: list[str] = []
     if not copy.get("headline"):
@@ -88,55 +107,84 @@ class Pipeline:
         demo.qa_passed = passed
         demo.qa_notes = notes
         lead.demo = demo
+        lead.cadence.variant = assign_variant(lead.id)
         if passed:
             lead.status = Status.DEMO_BUILT.value
-            lead.note(f"demo built + QA passed → {demo.preview_url}")
+            lead.note(f"demo built + QA passed → {demo.preview_url} "
+                      f"(variant {lead.cadence.variant})")
         else:
+            # Stays QUALIFIED → shows up in the dashboard's human review queue.
             lead.note(f"demo built but QA FAILED {notes} → human review queue")
         self.store.upsert(lead)
         return lead
 
-    # ---- stage 5: outreach ----------------------------------------------
-    def outreach(self, lead: Lead) -> Lead:
-        allowed, reason = outreach_allowed(lead, _local_hour(), channel="email")
+    # ---- stage 5: cadence-driven outreach --------------------------------
+    def execute_touch(self, lead: Lead, touch: Touch, day: int) -> None:
+        variant = lead.cadence.variant or assign_variant(lead.id)
+        allowed, reason = outreach_allowed(lead, _local_hour(), channel=touch.channel)
         if not allowed:
-            lead.status = Status.DEAD.value if reason == "on_dnc" else lead.status
-            lead.note(f"outreach blocked: {reason}")
-            self.store.upsert(lead)
-            return lead
-
-        # Channel 1: email the demo link (lowest legal risk).
-        subject = f"I built {lead.business.name} a new website — free to view"
-        body = (
-            f"Hi {lead.contacts.owner_name.split()[0]},\n\n"
-            f"I noticed {lead.business.name} could use a refreshed web presence, "
-            f"so I went ahead and built you a modern, mobile-friendly site. "
-            f"It's live for you to preview — free, no obligation:\n\n"
-            f"    {lead.demo.preview_url}\n\n"
-            f"If you like it, it's ${settings.price_one_time} to keep it, plus "
-            f"${settings.price_monthly}/mo hosting. If not, no worries at all.\n\n"
-            f"— Autopilot Web\n\nReply STOP to opt out."
-        )
-        self.p["email"].send(lead, subject, body)
-        lead.note("emailed demo link")
-
-        # Channel 2: AI voice call (gated again for call-hours/DNC).
-        allowed_voice, vreason = outreach_allowed(lead, _local_hour(), channel="voice")
-        if allowed_voice:
-            result = self.p["voice"].call(lead)
-            lead.note(f"voice call → {result['disposition']}")
-            if result["disposition"] == "interested":
-                lead.status = Status.INTERESTED.value
-            elif result["disposition"] == "not_interested":
+            if reason == "on_dnc":
                 lead.status = Status.DEAD.value
+                lead.cadence.stopped = True
+                lead.cadence.stop_reason = "dnc"
+            lead.note(f"day {day}: {touch.channel}/{touch.kind} blocked: {reason}")
+            # A blocked call-hours touch is skipped, not retried, in the sim.
+            lead.cadence.touch_index += 1
+            self.store.upsert(lead)
+            return
+
+        if touch.channel == "email":
+            subject, body = render_email(lead, touch.kind, variant)
+            self.p["email"].send(lead, subject, body)
+            if lead.status == Status.DEMO_BUILT.value:
+                lead.status = Status.CONTACTED.value
+            lead.note(f"day {day}: emailed {touch.kind} (variant {variant})")
+        else:  # voice
+            result = self.p["voice"].call(lead, voice_script(lead, variant))
+            disposition = result.get("disposition", "no_answer")
+            lead.note(f"day {day}: voice call → {disposition} (variant {variant})")
+            if disposition == "interested":
+                lead.status = Status.INTERESTED.value
+                lead.cadence.stopped = True
+                lead.cadence.stop_reason = "interested"
+            elif disposition == "not_interested":
+                lead.status = Status.DEAD.value
+                lead.cadence.stopped = True
+                lead.cadence.stop_reason = "declined"
             else:
                 lead.status = Status.CONTACTED.value
-        else:
-            lead.note(f"voice skipped: {vreason}")
-            lead.status = Status.CONTACTED.value
 
+        # Tag the attempt the provider just recorded with cadence metadata.
+        if lead.outreach:
+            lead.outreach[-1].variant = variant
+            lead.outreach[-1].day = day
+            lead.outreach[-1].kind = touch.kind
+
+        lead.cadence.touch_index += 1
+        lead.cadence.last_touch_day = day
         self.store.upsert(lead)
-        return lead
+
+    def tick(self, day: int) -> int:
+        """Execute every touch due on `day` for every active lead, then attempt
+        conversion for any interested leads. Returns touches executed."""
+        touched = 0
+        # sorted() for stable cross-process iteration (str-set order is
+        # randomized by PYTHONHASHSEED; determinism is a debugging feature).
+        for status in sorted(_ACTIVE):
+            for lead in self.store.by_status(status):
+                c = lead.cadence
+                while (not c.stopped
+                       and c.touch_index < len(TOUCH_PLAN)
+                       and TOUCH_PLAN[c.touch_index].day <= day
+                       and lead.status in _ACTIVE):
+                    self.execute_touch(lead, TOUCH_PLAN[c.touch_index], day)
+                    touched += 1
+
+        # Conversion attempt for newly interested leads (once per lead).
+        for lead in self.store.by_status(Status.INTERESTED):
+            if lead.billing.quote == 0:
+                self.convert(lead)
+        return touched
 
     # ---- stage 6: conversion --------------------------------------------
     def convert(self, lead: Lead) -> Lead:
@@ -146,25 +194,28 @@ class Pipeline:
             lead.status = Status.CONVERTED.value
             lead.note(f"PAID ${lead.billing.quote} — deploy to production next")
         else:
-            lead.note("payment not completed — schedule follow-up")
+            # Stays INTERESTED with a quote set → dashboard close queue.
+            lead.note("payment not completed — in close queue for human follow-up")
         self.store.upsert(lead)
         return lead
 
     # ---- full run --------------------------------------------------------
     def run_campaign(self, city: str, category: str, limit: int) -> dict:
-        """Run one full campaign end-to-end and return a summary."""
+        """Discover/qualify/build, then simulate the full cadence timeline."""
         leads = self.discover(city, category, limit)
         for lead in leads:
             self.qualify(lead)
-            if lead.status != Status.QUALIFIED.value:
-                continue
-            self.build_demo(lead)
-            if lead.status != Status.DEMO_BUILT.value:
-                continue  # failed QA → human review
-            self.outreach(lead)
-            if lead.status == Status.INTERESTED.value:
-                self.convert(lead)
-        return self.summary()
+            if lead.status == Status.QUALIFIED.value:
+                self.build_demo(lead)
+
+        touches = 0
+        for day in CAMPAIGN_DAYS:
+            touches += self.tick(day)
+
+        summary = self.summary()
+        summary["touches"] = touches
+        summary["days_simulated"] = CAMPAIGN_DAYS
+        return summary
 
     def summary(self) -> dict:
         counts = self.store.counts()

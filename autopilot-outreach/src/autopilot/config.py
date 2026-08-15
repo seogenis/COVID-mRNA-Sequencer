@@ -58,6 +58,22 @@ class Settings:
     anthropic_key: str = os.environ.get("ANTHROPIC_API_KEY", "")
     twilio_sid: str = os.environ.get("TWILIO_ACCOUNT_SID", "")
     stripe_key: str = os.environ.get("STRIPE_API_KEY", "")
+    vapi_key: str = os.environ.get("VAPI_API_KEY", "")
+
+    # LLM used by the live content writer.
+    llm_model: str = os.environ.get("APOP_LLM_MODEL", "claude-sonnet-5")
+
+    # SMTP (live email). CAN-SPAM requires a real postal address in the footer.
+    smtp_host: str = os.environ.get("APOP_SMTP_HOST", "")
+    smtp_port: int = int(os.environ.get("APOP_SMTP_PORT", "587"))
+    smtp_user: str = os.environ.get("APOP_SMTP_USER", "")
+    smtp_pass: str = os.environ.get("APOP_SMTP_PASS", "")
+    from_email: str = os.environ.get("APOP_FROM_EMAIL", "")
+    postal_address: str = os.environ.get("APOP_POSTAL_ADDRESS", "")
+
+    # Voice is double-gated: a key alone is NOT enough — you must also set
+    # APOP_VOICE_ENABLED=1 to acknowledge the TCPA/compliance requirements.
+    voice_enabled: bool = os.environ.get("APOP_VOICE_ENABLED", "") == "1"
 
     @property
     def is_mock(self) -> bool:

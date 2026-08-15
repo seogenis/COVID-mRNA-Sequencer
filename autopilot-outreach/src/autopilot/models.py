@@ -91,6 +91,19 @@ class OutreachAttempt:
     at: str = ""
     disposition: str = ""         # sent | no_answer | interested | not_interested | dnc
     artifact: str = ""            # path to transcript / email file
+    variant: str = ""             # A/B script variant used for this touch
+    day: int = 0                  # campaign day the touch was executed on
+    kind: str = ""                # intro | call | followup | breakup
+
+
+@dataclass
+class Cadence:
+    """Multi-day follow-up state. The pipeline's tick() advances this."""
+    variant: str = ""             # A/B assignment, fixed at demo-build time
+    touch_index: int = 0          # next touch in cadence.TOUCH_PLAN to execute
+    last_touch_day: int = -1
+    stopped: bool = False
+    stop_reason: str = ""
 
 
 @dataclass
@@ -99,6 +112,7 @@ class Billing:
     paid: bool = False
     paid_at: str = ""
     method: str = ""
+    payment_link: str = ""        # live mode: Stripe Checkout URL (webhook confirms)
 
 
 @dataclass
@@ -120,6 +134,7 @@ class Lead:
     contacts: Contacts = field(default_factory=Contacts)
     enrichment: Enrichment = field(default_factory=Enrichment)
     demo: Demo = field(default_factory=Demo)
+    cadence: Cadence = field(default_factory=Cadence)
     outreach: list[OutreachAttempt] = field(default_factory=list)
     billing: Billing = field(default_factory=Billing)
     compliance: Compliance = field(default_factory=Compliance)
@@ -142,6 +157,7 @@ class Lead:
             contacts=Contacts(**d.get("contacts", {})),
             enrichment=Enrichment(**d.get("enrichment", {})),
             demo=Demo(**d.get("demo", {})),
+            cadence=Cadence(**d.get("cadence", {})),
             outreach=[OutreachAttempt(**a) for a in d.get("outreach", [])],
             billing=Billing(**d.get("billing", {})),
             compliance=Compliance(**d.get("compliance", {})),

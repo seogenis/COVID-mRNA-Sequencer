@@ -73,10 +73,14 @@ class TestQualify(Base):
 
 
 class TestSiteGen(Base):
+    def _first_qualified(self, city="Austin", category="landscaping"):
+        for l in self.pipe.discover(city, category, 12):
+            if self.pipe.qualify(l).status == Status.QUALIFIED.value:
+                return l
+        self.fail("no qualified lead in mock dataset")
+
     def test_demo_html_is_written_and_valid(self):
-        leads = self.pipe.discover("Austin", "landscaping", 12)
-        lead = next(self.pipe.qualify(l) for l in leads
-                    if self.pipe.qualify(l).status == Status.QUALIFIED.value)
+        lead = self._first_qualified()
         self.pipe.build_demo(lead)
         self.assertTrue(Path(lead.demo.path).exists())
         htmltxt = Path(lead.demo.path).read_text()
@@ -107,6 +111,69 @@ class TestCampaign(Base):
         converted = self.store.by_status(Status.CONVERTED)
         self.assertEqual(self.store.revenue(),
                          sum(l.billing.quote for l in converted))
+
+
+class TestCadence(Base):
+    def test_multi_day_cadence_produces_followups(self):
+        """Non-responding leads must receive follow-up touches on later days."""
+        self.pipe.run_campaign("Austin", "landscaping", 12)
+        contacted = self.store.by_status(Status.CONTACTED)
+        self.assertTrue(contacted, "expected at least one non-responder")
+        for lead in contacted:
+            days = [a.day for a in lead.outreach]
+            self.assertGreaterEqual(len(lead.outreach), 3,
+                                    f"{lead.id} should get intro+call+followups")
+            self.assertEqual(days, sorted(days), "touches must be in day order")
+            kinds = [a.kind for a in lead.outreach]
+            self.assertEqual(kinds[0], "intro")
+            self.assertIn("followup", kinds)
+
+    def test_interested_leads_stop_cadence(self):
+        """No follow-up spam after a lead says yes: cadence must stop."""
+        self.pipe.run_campaign("Austin", "landscaping", 12)
+        for lead in (self.store.by_status(Status.INTERESTED)
+                     + self.store.by_status(Status.CONVERTED)):
+            self.assertTrue(lead.cadence.stopped)
+            self.assertEqual(lead.cadence.stop_reason, "interested")
+            # No email touches after the day the voice call landed.
+            call_day = next(a.day for a in lead.outreach if a.channel == "voice")
+            after = [a for a in lead.outreach if a.day > call_day]
+            self.assertEqual(after, [])
+
+    def test_variants_are_deterministic_and_split(self):
+        from autopilot.cadence import assign_variant
+        self.assertEqual(assign_variant("lead-1"), assign_variant("lead-1"))
+        variants = {assign_variant(f"lan-aus-{i:03d}") for i in range(12)}
+        self.assertEqual(variants, {"A", "B"}, "12 leads should hit both variants")
+
+    def test_outreach_copy_never_lies_about_presence(self):
+        """Variant B's 'can't find you online' hook must not be used on leads
+        that DO have a website (truthful-outreach invariant, DESIGN §7)."""
+        from autopilot.cadence import render_email, voice_script
+        from autopilot.models import Lead
+
+        with_site = Lead(id="t1")
+        with_site.business.name = "Maria's"
+        with_site.presence.has_site = True
+        subject, _ = render_email(with_site, "intro", "B")
+        self.assertNotIn("can't find", subject)
+        self.assertNotIn("couldn't find", voice_script(with_site, "B")["opener"])
+
+        no_site = Lead(id="t2")
+        no_site.business.name = "Joe's"
+        no_site.presence.has_site = False
+        subject, _ = render_email(no_site, "intro", "B")
+        self.assertIn("can't find", subject)
+
+    def test_ab_stats_totals_match_funnel(self):
+        from autopilot.cadence import ab_stats
+        self.pipe.run_campaign("Austin", "landscaping", 12)
+        stats = ab_stats(self.store.all())
+        self.assertTrue(stats)
+        converted = sum(s["converted"] for s in stats.values())
+        self.assertEqual(converted, len(self.store.by_status(Status.CONVERTED)))
+        revenue = sum(s["revenue"] for s in stats.values())
+        self.assertEqual(revenue, self.store.revenue())
 
 
 class TestCompliance(Base):
