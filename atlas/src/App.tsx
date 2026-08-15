@@ -27,6 +27,7 @@ export default function App() {
   const selectedId = useStore((s) => s.selectedId)
   const deleteNode = useStore((s) => s.deleteNode)
   const frameAll = useStore((s) => s.frameAll)
+  const undo = useStore((s) => s.undo)
 
   const [historyOpen, setHistoryOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -58,6 +59,10 @@ export default function App() {
         }
       }
       if (!typing && e.key === 'f' && !e.metaKey && !e.ctrlKey) frameAll()
+      if (!typing && e.key === 'z' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault()
+        undo()
+      }
       if (!typing && (e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
         deleteNode(selectedId)
       }
@@ -65,7 +70,7 @@ export default function App() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cancelLinking, select, selectedId, deleteNode, frameAll, aiOpen, settingsOpen, historyOpen, helpOpen])
+  }, [cancelLinking, select, selectedId, deleteNode, frameAll, undo, aiOpen, settingsOpen, historyOpen, helpOpen])
 
   return (
     <div className="app">

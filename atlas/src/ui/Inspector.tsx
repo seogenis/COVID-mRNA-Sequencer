@@ -108,7 +108,16 @@ export function Inspector() {
           </label>
           <label>
             Owner
-            <input value={node.owner} onChange={(e) => updateNode(node.id, { owner: e.target.value })} />
+            <input
+              list="atlas-owners"
+              value={node.owner}
+              onChange={(e) => updateNode(node.id, { owner: e.target.value })}
+            />
+            <datalist id="atlas-owners">
+              {[...new Set(Object.values(nodes).map((n) => n.owner).filter(Boolean))].sort().map((o) => (
+                <option key={o} value={o} />
+              ))}
+            </datalist>
           </label>
           <label>
             Date

@@ -101,10 +101,52 @@ const firstTitle = await page.$eval('.outline-node .outline-node-title', (e) => 
 ok('edit propagates to outline', firstTitle === 'Smoke-edited title')
 
 // --- add node ---
-const before = (await page.$$('.node-card')).length
+const countAll = async () => (await page.$$('.node-card, .node-mini')).length
+const before = await countAll()
 await page.click('button.primary:has-text("Node")')
 await page.waitForTimeout(400)
-ok('+ Node adds a node', (await page.$$('.node-card')).length === before + 1)
+ok('+ Node adds a node', (await countAll()) === before + 1)
+
+// --- undo ---
+await page.keyboard.press('Control+z')
+await page.waitForTimeout(400)
+ok('Ctrl+Z undoes the add', (await countAll()) === before)
+
+// --- double-click a floor creates a node at that spot ---
+await page.keyboard.press('f') // frame everything so floor space is predictable
+await page.waitForTimeout(1500)
+const canvasBox = await (await page.$('canvas')).boundingBox()
+await page.mouse.dblclick(canvasBox.x + canvasBox.width * 0.25, canvasBox.y + canvasBox.height * 0.75)
+await page.waitForTimeout(500)
+const afterDbl = await countAll()
+const dblCreated = afterDbl === before + 1
+ok('double-click floor creates a node there', dblCreated)
+if (dblCreated) {
+  const t = await page.$eval('.insp-title', (e) => e.value).catch(() => null)
+  ok('floor-created node opens in inspector', t === 'New node')
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('Control+z')
+  await page.waitForTimeout(300)
+}
+
+// --- people facet ---
+await page.click('.side-panel .tab:has-text("Filters")').catch(() => {})
+await page.waitForTimeout(200)
+const ownerRows = await page.$$eval('.side-panel .check-row', (els) =>
+  ['Sean', 'Alex', 'Jordan'].filter((name) => els.some((e) => (e.textContent || '').includes(name))),
+)
+ok('people facet lists owners', ownerRows.length === 3)
+const dimBefore = (await page.$$('.node-card.dim, .node-mini.dim')).length
+const seanRow = await page.$('.side-panel .check-row:has-text("Sean") input')
+await seanRow.click()
+await page.waitForTimeout(400)
+const dimAfter = (await page.$$('.node-card.dim, .node-mini.dim')).length
+ok('toggling a person dims their nodes out', dimAfter > dimBefore)
+await seanRow.click()
+await page.waitForTimeout(300)
+
+// --- progress rollup ---
+ok('a parent card shows child progress', !!(await page.$('.node-progress')))
 
 // --- view controls not blocked by inspector ---
 await page.click('button:has-text("Frame all")')
@@ -122,7 +164,8 @@ await page.click('button.seg:has-text("All")')
 // --- history ---
 await page.click('button:has-text("History")')
 await page.waitForTimeout(300)
-ok('history logs commits', (await page.$$('.commit-row')).length >= 2)
+// (undo restores the commit log along with the graph, so only the edit commit remains)
+ok('history logs commits', (await page.$$('.commit-row')).length >= 1)
 await page.keyboard.press('Escape')
 await page.waitForTimeout(200)
 

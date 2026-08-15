@@ -56,11 +56,15 @@ function FiltersTab() {
   const toggleLevel = useStore((s) => s.toggleLevel)
   const toggleStatus = useStore((s) => s.toggleStatus)
   const toggleBranch = useStore((s) => s.toggleBranch)
+  const toggleOwner = useStore((s) => s.toggleOwner)
   const setFilters = useStore((s) => s.setFilters)
   const branches = useStore((s) => s.branches)
+  const nodes = useStore((s) => s.nodes)
   const addBranch = useStore((s) => s.addBranch)
 
   const branchOn = (id: string) => filters.branchIds === null || filters.branchIds.includes(id)
+  const owners = [...new Set(Object.values(nodes).map((n) => n.owner || 'Unassigned'))].sort()
+  const ownerOn = (o: string) => filters.owners === null || filters.owners.includes(o)
 
   return (
     <>
@@ -114,6 +118,17 @@ function FiltersTab() {
             <input type="checkbox" checked={branchOn(b.id)} onChange={() => toggleBranch(b.id)} />
             <span className="swatch" style={{ background: b.color }} />
             <span>{b.name}</span>
+          </label>
+        ))}
+      </div>
+
+      <div className="filter-group">
+        <div className="filter-title">People</div>
+        {owners.map((o) => (
+          <label key={o} className="check-row">
+            <input type="checkbox" checked={ownerOn(o)} onChange={() => toggleOwner(o)} />
+            <span className="owner-avatar">{o.slice(0, 1).toUpperCase()}</span>
+            <span>{o}</span>
           </label>
         ))}
       </div>

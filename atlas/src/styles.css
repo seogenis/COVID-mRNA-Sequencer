@@ -499,6 +499,87 @@ textarea:focus {
   margin-top: 3px;
 }
 
+/* compact far-away node representation (level-of-detail) */
+.node-mini {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 150px;
+  background: rgba(20, 25, 35, 0.85);
+  border: 1px solid var(--border);
+  border-left: 3px solid;
+  border-radius: 999px;
+  padding: 3px 9px 3px 7px;
+  user-select: none;
+}
+.node-mini-title {
+  font-size: 11px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.node-mini.dim {
+  opacity: 0.25;
+}
+.node-mini.nbr {
+  border-color: #fff;
+}
+
+/* connected-to-selection highlight + context dimming */
+.node-card.nbr {
+  border-color: #cfd6e6;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35), 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+.node-card.ctx-dim,
+.node-mini.ctx-dim {
+  opacity: 0.45;
+}
+.node-card.dim {
+  opacity: 0.28; /* filter dim wins over context dim */
+}
+
+/* child progress rollup */
+.node-progress {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+}
+.node-progress-bar {
+  flex: 1;
+  height: 4px;
+  background: #2a3244;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.node-progress-fill {
+  height: 100%;
+  background: #4bd0a0;
+  border-radius: 2px;
+}
+.node-progress-label {
+  font-size: 9.5px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* people facet */
+.owner-avatar {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--accent-2);
+  font-size: 9px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
 .level-tag {
   width: 230px;
   user-select: none;

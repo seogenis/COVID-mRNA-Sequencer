@@ -51,24 +51,32 @@ smoke test — no key or network needed.
 
 1. **Onboarding** appears on first run — read it, then *Explore the space*.
 2. **Move**: drag to orbit, scroll to zoom, right-drag to pan. Lost? Press
-   **F** or click **⤢ Frame all** (bottom-right).
+   **F** or click **⤢ Frame all** (bottom-right). Zoom all the way out —
+   cards collapse into compact chips so the whole space stays readable.
 3. **Outline** tab (left panel) — click any node to fly to it. Double-clicking
    a node in 3D does the same.
-4. **Edit**: click a node → inspector (right). Change its altitude and watch it
-   move floors.
-5. **Filters**: uncheck *Execution*, or use the **Executive / Builder** presets
-   in the toolbar.
-6. **Link**: in the inspector click *depends on →*, then click another node.
-7. **History**: edit someone else's strategy node and see it flagged for
-   approval.
-8. **AI** (dev build + key): ✦ → *Compose* → paste a messy paragraph of company
-   thoughts → *Structure this* → review → *Add to space*. Then select a
-   strategy node → *Break into projects*.
+4. **Create in place**: double-click an empty spot on any floor — the node is
+   born with that spot's date, branch, and altitude, ready to title.
+5. **Edit**: click a node → inspector (right). Its connected nodes light up.
+   Change its altitude and watch it move floors. Notice parents show a
+   progress bar rolling up their children (e.g. *Qualify 3 actuator
+   suppliers* → 1/2).
+6. **People**: Filters → *People* — uncheck someone to fade their work out.
+   That plus **Executive / Builder** is the "what matters to me" view.
+7. **Link**: in the inspector click *depends on →*, then click another node.
+8. **Undo**: delete something with Backspace, bring it back with **Ctrl/⌘+Z**
+   (or the ↩ button).
+9. **History**: edit someone else's strategy node (owner ≠ you) and see it
+   flagged for approval.
+10. **AI** (dev build + key): ✦ → *Compose* → paste a messy paragraph of
+    company thoughts → *Structure this* → review → *Add to space*. Then select
+    a strategy node → *Break into projects*.
 
 ## Debug toolkit
 
 | Problem | Fix |
 | --- | --- |
+| Deleted / changed something by accident | **Ctrl/⌘+Z** or the ↩ toolbar button (structural changes, incl. AI applies) |
 | Space looks wrong / want a clean slate | ⚙ Settings → **Reset to seed** |
 | Camera lost in the void | **F** key or **⤢ Frame all** |
 | Wondering what changed | **History** button (top-right) |

@@ -53,7 +53,7 @@ export const seedNodes: AtlasNode[] = [
     'b-china',
     '2026-02-01',
     'doing',
-    'You',
+    'Sean',
     'The thesis: whoever understands the China hardware + robotics ecosystem before Western competitors gets a durable edge on cost, speed, and talent.\n\n**Why it matters**\n- Component cost is 3-5x cheaper on the ground.\n- Lead times collapse when you know the right suppliers.\n\nThis is a bet, not a task. Everything below is in service of it.',
   ),
   node(
@@ -64,7 +64,7 @@ export const seedNodes: AtlasNode[] = [
     'b-china',
     '2026-03-01',
     'doing',
-    'You',
+    'Sean',
     'Secure a repeatable pipeline for sourcing robot actuators, sensors, and compute at China prices.',
   ),
   node(
@@ -75,7 +75,7 @@ export const seedNodes: AtlasNode[] = [
     'b-china',
     '2026-04-10',
     'doing',
-    'You',
+    'Jordan',
     'Deliverable: a short-list of 3 vetted suppliers with sample units in hand.\n\n- [ ] Shortlist from Alibaba + referrals\n- [ ] Request samples\n- [ ] Bench test torque + backlash',
   ),
   node(
@@ -86,7 +86,7 @@ export const seedNodes: AtlasNode[] = [
     'b-china',
     '2026-08-01',
     'todo',
-    'You',
+    'Sean',
     'On-the-ground week in Shenzhen. Depends on having a supplier shortlist to visit.',
   ),
   node(
@@ -96,8 +96,8 @@ export const seedNodes: AtlasNode[] = [
     'execution',
     'b-china',
     '2026-07-20',
-    'todo',
-    'You',
+    'done',
+    'Jordan',
     'Jeff has a customs broker contact for importing sample units without the usual delay. Short email, ask for the intro.',
   ),
   node(
@@ -108,7 +108,7 @@ export const seedNodes: AtlasNode[] = [
     'b-china',
     '2026-07-18',
     'todo',
-    'You',
+    'Sean',
     'Open question — an HK entity may simplify payments + IP, but adds overhead. Park here until we have supplier momentum.',
   ),
 
@@ -121,7 +121,7 @@ export const seedNodes: AtlasNode[] = [
     'b-data',
     '2026-02-15',
     'doing',
-    'You',
+    'Sean',
     'The core technical bet. Two credible paths, materially different in cost, scale, and data quality. We likely commit to one within a quarter.',
   ),
   node(
@@ -132,7 +132,7 @@ export const seedNodes: AtlasNode[] = [
     'b-data',
     '2026-03-05',
     'idea',
-    'You',
+    'Alex',
     'Cheap handheld grippers, collect demonstrations in the wild. Scales cheaply, but sim-to-real / embodiment gap is real.',
   ),
   node(
@@ -143,7 +143,7 @@ export const seedNodes: AtlasNode[] = [
     'b-data',
     '2026-03-05',
     'idea',
-    'You',
+    'Alex',
     'Teleoperate the actual robot to gather on-embodiment data. Higher fidelity, much higher cost per hour.',
   ),
   node(
@@ -154,7 +154,7 @@ export const seedNodes: AtlasNode[] = [
     'b-data',
     '2026-05-01',
     'todo',
-    'You',
+    'Alex',
     'Deliverable: one working handheld gripper logging synced video + pose. Enough to judge data quality.',
   ),
   node(
@@ -165,7 +165,7 @@ export const seedNodes: AtlasNode[] = [
     'b-data',
     '2026-05-20',
     'idea',
-    'You',
+    'Alex',
     'Deliverable: an arm we can teleoperate end-to-end, measuring cost per demonstration-hour.',
   ),
   node(
@@ -176,7 +176,7 @@ export const seedNodes: AtlasNode[] = [
     'b-data',
     '2026-07-21',
     'blocked',
-    'You',
+    'Alex',
     'Blocked on Jared — need his reply on which manipulation benchmark to standardise on before we can compare UMI vs VLA data.',
   ),
 
@@ -189,7 +189,7 @@ export const seedNodes: AtlasNode[] = [
     'b-gtm',
     '2026-04-01',
     'idea',
-    'You',
+    'Sean',
     'Who pays first, and for what narrow task? A sharp wedge beats a broad platform this early.',
   ),
   node(
@@ -200,7 +200,7 @@ export const seedNodes: AtlasNode[] = [
     'b-gtm',
     '2026-06-15',
     'doing',
-    'You',
+    'Sean',
     'Deliverable: signed offer with someone who has shipped a real manipulation stack.',
   ),
   node(
@@ -211,7 +211,7 @@ export const seedNodes: AtlasNode[] = [
     'b-gtm',
     '2026-07-22',
     'todo',
-    'You',
+    'Jordan',
     'Tighten the narrative around the China + data bets so it reads in 60 seconds.',
   ),
 ]

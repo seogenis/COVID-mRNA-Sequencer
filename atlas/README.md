@@ -48,6 +48,13 @@ everyone else is doing, at the altitude that matters to them.
 - **Create / edit / delete nodes** — each node is typed (strategy, task, info,
   question, decision), has a status, an owner, a date, a branch, and a markdown
   body (so a node can be a whole folder of thinking, Obsidian-style).
+  **Double-click an empty spot on a floor** to create a node right there — the
+  position sets its date, branch, and altitude. **Ctrl/⌘+Z** undoes structural
+  changes (adds, deletes, AI applies).
+- **People lens** — filter the space by owner; selecting a node lights up its
+  connections; parent nodes show a progress bar rolling up their children, so
+  the strategy floor reflects live execution state. Zoomed far out, cards
+  collapse to compact chips so the whole space stays legible.
 - **Connect nodes** — typed edges: `contains` (hierarchy across floors),
   `depends on`, `relates to`. Pick a link type in the inspector, then click a
   target node in the space.

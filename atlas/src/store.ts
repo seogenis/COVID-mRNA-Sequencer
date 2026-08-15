@@ -59,6 +59,7 @@ function defaultFilters(): Filters {
     levels: Object.fromEntries(LEVEL_ORDER.map((l) => [l, true])) as Record<Level, boolean>,
     statuses: Object.fromEntries(ALL_STATUS.map((s) => [s, true])) as Record<Status, boolean>,
     branchIds: null,
+    owners: null,
     search: '',
     hideNonMatching: false,
   }
@@ -67,6 +68,17 @@ function defaultFilters(): Filters {
 function keyed<T extends { id: string }>(arr: T[]): Record<string, T> {
   return Object.fromEntries(arr.map((x) => [x.id, x]))
 }
+
+/** What Ctrl+Z restores. Structural ops push one of these before mutating. */
+interface UndoSnapshot {
+  nodes: Record<string, AtlasNode>
+  edges: Record<string, AtlasEdge>
+  branches: Record<string, Branch>
+  commits: Commit[]
+  label: string
+}
+
+const UNDO_CAP = 40
 
 interface Actions {
   addNode: (partial?: Partial<AtlasNode>) => string
@@ -88,7 +100,10 @@ interface Actions {
   toggleLevel: (l: Level) => void
   toggleStatus: (s: Status) => void
   toggleBranch: (id: string) => void
+  toggleOwner: (owner: string) => void
   setFocus: (f: FocusPreset) => void
+
+  undo: () => void
 
   select: (id: string | null) => void
   startLinking: (id: string, kind: EdgeKind) => void
@@ -120,8 +135,18 @@ interface State {
   linkingFrom: string | null
   linkKind: EdgeKind
   frameRequest: FrameRequest | null
+  /** Undo stack for structural changes (add/delete/AI/layout). Not persisted. */
+  past: UndoSnapshot[]
   me: string
   settings: { anthropicApiKey: string; aiModel: string; showLevelPlanes: boolean; showTimeGrid: boolean }
+}
+
+/** Immutable-friendly: state records are replaced, never mutated, so sharing refs is safe. */
+function pushUndo(s: State, label: string): UndoSnapshot[] {
+  return [
+    ...s.past.slice(-(UNDO_CAP - 1)),
+    { nodes: s.nodes, edges: s.edges, branches: s.branches, commits: s.commits, label },
+  ]
 }
 
 function logCommit(commits: Commit[], author: string, message: string, needsApproval: boolean): Commit[] {
@@ -149,6 +174,7 @@ export const useStore = create<State & Actions>()(
       linkingFrom: null,
       linkKind: 'hierarchy',
       frameRequest: null,
+      past: [],
       me: 'You',
       settings: { anthropicApiKey: '', aiModel: 'claude-sonnet-5', showLevelPlanes: true, showTimeGrid: true },
 
@@ -174,6 +200,7 @@ export const useStore = create<State & Actions>()(
           updatedAt: Date.now(),
         }
         set((s) => ({
+          past: pushUndo(s, 'add node'),
           nodes: { ...s.nodes, [id]: n },
           selectedId: id,
           commits: logCommit(s.commits, s.me, `created "${n.title}"`, n.level === 'strategy'),
@@ -217,6 +244,7 @@ export const useStore = create<State & Actions>()(
             Object.entries(s.edges).filter(([, e]) => e.from !== id && e.to !== id),
           )
           return {
+            past: pushUndo(s, `delete "${title}"`),
             nodes,
             edges,
             selectedId: s.selectedId === id ? null : s.selectedId,
@@ -233,7 +261,7 @@ export const useStore = create<State & Actions>()(
           )
           if (exists) return { linkingFrom: null }
           const e: AtlasEdge = { id: uid('e'), from, to, kind }
-          return { edges: { ...s.edges, [e.id]: e }, linkingFrom: null }
+          return { past: pushUndo(s, 'add link'), edges: { ...s.edges, [e.id]: e }, linkingFrom: null }
         })
       },
 
@@ -241,7 +269,7 @@ export const useStore = create<State & Actions>()(
         set((s) => {
           const edges = { ...s.edges }
           delete edges[id]
-          return { edges }
+          return { past: pushUndo(s, 'remove link'), edges }
         })
       },
 
@@ -324,6 +352,7 @@ export const useStore = create<State & Actions>()(
 
         const counts = { nodes: proposal.nodes.length, edges: edgeCount, branches: proposal.branches.length }
         set((s) => ({
+          past: pushUndo(s, 'AI changes'),
           branches,
           nodes,
           edges,
@@ -357,6 +386,17 @@ export const useStore = create<State & Actions>()(
           const has = cur.includes(id)
           const next = has ? cur.filter((b) => b !== id) : [...cur, id]
           return { filters: { ...s.filters, branchIds: next.length === Object.keys(s.branches).length ? null : next } }
+        }),
+      toggleOwner: (owner) =>
+        set((s) => {
+          const all = [...new Set(Object.values(s.nodes).map((n) => n.owner || 'Unassigned'))]
+          const cur = s.filters.owners
+          if (cur === null) {
+            return { filters: { ...s.filters, owners: all.filter((o) => o !== owner) } }
+          }
+          const has = cur.includes(owner)
+          const next = has ? cur.filter((o) => o !== owner) : [...cur, owner]
+          return { filters: { ...s.filters, owners: next.length >= all.length ? null : next } }
         }),
 
       setFocus: (f) =>
@@ -401,12 +441,33 @@ export const useStore = create<State & Actions>()(
           const nodes = Object.fromEntries(
             Object.entries(s.nodes).map(([id, n]) => [id, { ...n, offset: { x: 0, y: 0, z: 0 }, pinned: false }]),
           )
-          return { nodes, commits: logCommit(s.commits, s.me, 'auto-organized the space', false) }
+          return {
+            past: pushUndo(s, 're-snap layout'),
+            nodes,
+            commits: logCommit(s.commits, s.me, 'auto-organized the space', false),
+          }
+        })
+      },
+
+      undo: () => {
+        set((s) => {
+          const last = s.past[s.past.length - 1]
+          if (!last) return s
+          return {
+            past: s.past.slice(0, -1),
+            nodes: last.nodes,
+            edges: last.edges,
+            branches: last.branches,
+            commits: last.commits,
+            selectedId: s.selectedId && last.nodes[s.selectedId] ? s.selectedId : null,
+            linkingFrom: null,
+          }
         })
       },
 
       resetSeed: () =>
-        set({
+        set((s) => ({
+          past: pushUndo(s, 'reset to seed'),
           nodes: keyed(seedNodes),
           edges: keyed(seedEdges),
           branches: keyed(seedBranches),
@@ -415,20 +476,21 @@ export const useStore = create<State & Actions>()(
           focus: 'all',
           selectedId: null,
           linkingFrom: null,
-        }),
+        })),
 
       importState: (json) => {
         try {
           const data = JSON.parse(json)
           if (!data.nodes || !data.branches) return false
-          set({
+          set((s) => ({
+            past: pushUndo(s, 'import'),
             nodes: Array.isArray(data.nodes) ? keyed(data.nodes) : data.nodes,
             edges: Array.isArray(data.edges) ? keyed(data.edges) : data.edges ?? {},
             branches: Array.isArray(data.branches) ? keyed(data.branches) : data.branches,
             commits: data.commits ?? [],
             selectedId: null,
             linkingFrom: null,
-          })
+          }))
           return true
         } catch {
           return false

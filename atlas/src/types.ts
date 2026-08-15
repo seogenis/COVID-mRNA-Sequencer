@@ -80,6 +80,7 @@ export interface Filters {
   levels: Record<Level, boolean>
   statuses: Record<Status, boolean>
   branchIds: string[] | null // null = all branches
+  owners: string[] | null // null = all owners
   search: string
   /** hide (true) vs dim (false) nodes that don't match. */
   hideNonMatching: boolean

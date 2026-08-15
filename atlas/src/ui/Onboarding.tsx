@@ -65,16 +65,17 @@ export function Onboarding({ onClose }: { onClose: () => void }) {
             <div className="onb-h">Work with it</div>
             <ul>
               <li>
-                <strong>+ Node</strong> to add; drag a node to reposition
+                <strong>Double-click an empty spot on a floor</strong> to create a node there — the position sets its
+                date, branch, and altitude
               </li>
               <li>
-                Click a node → edit it in the <strong>inspector</strong>
+                Click a node → edit in the <strong>inspector</strong>; its connections light up
               </li>
               <li>
-                <strong>Filters / Outline</strong> panel on the left
+                <strong>Filters / Outline</strong> on the left — including by <strong>person</strong>
               </li>
               <li>
-                <strong>Executive / Builder</strong> presets hide a floor
+                <strong>Ctrl/⌘+Z</strong> undoes adds, deletes &amp; AI changes
               </li>
               <li>
                 <strong>✦ AI</strong> → paste a brain-dump into <em>Compose</em>

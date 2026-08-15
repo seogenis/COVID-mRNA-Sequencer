@@ -20,6 +20,8 @@ export function Toolbar({ onOpenHistory, onOpenSettings, onOpenAi }: Props) {
   const search = useStore((s) => s.filters.search)
   const setFilters = useStore((s) => s.setFilters)
   const pending = useStore((s) => s.commits.filter((c) => c.needsApproval && !c.approved).length)
+  const undo = useStore((s) => s.undo)
+  const undoLabel = useStore((s) => s.past[s.past.length - 1]?.label)
 
   const handleAdd = () => {
     const level = focus === 'executive' ? 'strategy' : focus === 'builder' ? 'execution' : 'project'
@@ -59,6 +61,14 @@ export function Toolbar({ onOpenHistory, onOpenSettings, onOpenAi }: Props) {
       </div>
 
       <div className="toolbar-actions">
+        <button
+          className="btn icon"
+          onClick={undo}
+          disabled={!undoLabel}
+          title={undoLabel ? `Undo ${undoLabel} (Ctrl+Z)` : 'Nothing to undo'}
+        >
+          ↩
+        </button>
         <button className="btn primary" onClick={handleAdd}>
           + Node
         </button>

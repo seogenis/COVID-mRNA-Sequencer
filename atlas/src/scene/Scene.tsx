@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
@@ -80,13 +80,42 @@ interface DragState {
 
 export function Scene() {
   const nodes = useStore((s) => s.nodes)
+  const edges = useStore((s) => s.edges)
   const filters = useStore((s) => s.filters)
+  const selectedId = useStore((s) => s.selectedId)
   const select = useStore((s) => s.select)
   const cancelLinking = useStore((s) => s.cancelLinking)
   const moveNode = useStore((s) => s.moveNode)
 
   const controls = useRef<OrbitControlsImpl>(null)
   const [drag, setDrag] = useState<DragState | null>(null)
+
+  // Nodes directly connected to the selection — highlighted so the "why does
+  // this matter" context reads instantly.
+  const neighbors = useMemo(() => {
+    if (!selectedId) return null
+    const set = new Set<string>()
+    for (const e of Object.values(edges)) {
+      if (e.from === selectedId) set.add(e.to)
+      if (e.to === selectedId) set.add(e.from)
+    }
+    return set
+  }, [edges, selectedId])
+
+  // Per-parent rollup of direct hierarchy children: the strategy floor shows
+  // live progress of the execution floor.
+  const progress = useMemo(() => {
+    const map: Record<string, { done: number; total: number }> = {}
+    for (const e of Object.values(edges)) {
+      if (e.kind !== 'hierarchy') continue
+      const child = nodes[e.to]
+      if (!child) continue
+      const p = (map[e.from] ??= { done: 0, total: 0 })
+      p.total += 1
+      if (child.status === 'done') p.done += 1
+    }
+    return map
+  }, [edges, nodes])
 
   const beginDrag = (id: string) => {
     const n = useStore.getState().nodes[id]
@@ -136,7 +165,15 @@ export function Scene() {
       <Edges />
 
       {nodeList.map((n) => (
-        <NodeMesh key={n.id} node={n} matched={matches(n, filters)} onBeginDrag={beginDrag} />
+        <NodeMesh
+          key={n.id}
+          node={n}
+          matched={matches(n, filters)}
+          neighbor={neighbors?.has(n.id) ?? false}
+          hasSelection={selectedId !== null}
+          progress={progress[n.id]}
+          onBeginDrag={beginDrag}
+        />
       ))}
 
       {/* Invisible plane that captures pointer motion while dragging a node. */}

@@ -81,3 +81,15 @@ export function dateToX(iso: string): number {
 export function laneToZ(lane: number): number {
   return lane * LANE_DEPTH
 }
+
+/** Inverse of dateToX: world x -> ISO date (used by click-to-create). */
+export function xToDate(x: number): string {
+  const anchor = Date.parse(TIME_ANCHOR + 'T00:00:00Z')
+  const ms = anchor + (x / UNITS_PER_DAY) * 86_400_000
+  return new Date(ms).toISOString().slice(0, 10)
+}
+
+/** Inverse of laneToZ: world z -> nearest lane index. */
+export function zToLane(z: number): number {
+  return Math.round(z / LANE_DEPTH)
+}
