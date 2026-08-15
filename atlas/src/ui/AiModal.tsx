@@ -12,6 +12,7 @@ import {
   type AiConfig,
 } from '../lib/ai'
 import { LEVEL_LABEL, EDGE_LABEL } from '../config'
+import { HOSTED } from '../lib/env'
 import { ProposalPreview } from './ProposalPreview'
 
 type Tab = 'compose' | 'connect' | 'organize'
@@ -134,10 +135,18 @@ export function AiModal({ onClose }: { onClose: () => void }) {
           </button>
         </div>
 
-        {!apiKey && (
+        {HOSTED ? (
           <p className="field-hint keyless">
-            Add an Anthropic API key in Settings to use Compose &amp; Connect. Organize still runs an offline heuristic.
+            You're in the hosted preview. Compose &amp; Connect call Anthropic directly and are blocked by the sandbox
+            here — run the dev build (README) with your API key. The offline Organize heuristic still works.
           </p>
+        ) : (
+          !apiKey && (
+            <p className="field-hint keyless">
+              Add an Anthropic API key in Settings to use Compose &amp; Connect. Organize still runs an offline
+              heuristic.
+            </p>
+          )
         )}
         {error && <p className="error-text">{error}</p>}
         {notice && <p className="notice-text">{notice}</p>}

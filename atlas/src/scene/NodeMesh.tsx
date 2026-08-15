@@ -24,6 +24,7 @@ export function NodeMesh({ node, matched, onBeginDrag }: Props) {
   const linkKind = useStore((s) => s.linkKind)
   const select = useStore((s) => s.select)
   const addEdge = useStore((s) => s.addEdge)
+  const focusNode = useStore((s) => s.focusNode)
   const [hovered, setHovered] = useState(false)
 
   const pos = nodePosition(node, branch)
@@ -56,6 +57,10 @@ export function NodeMesh({ node, matched, onBeginDrag }: Props) {
             return
           }
           onBeginDrag(node.id)
+        }}
+        onDoubleClick={(e) => {
+          e.stopPropagation()
+          focusNode(node.id)
         }}
       >
         <meshStandardMaterial

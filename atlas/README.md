@@ -37,7 +37,12 @@ everyone else is doing, at the altitude that matters to them.
 ## What you can do
 
 - **Fly through the space** — orbit (drag), pan (right-drag / two-finger), zoom
-  (scroll), Desmos-style.
+  (scroll), Desmos-style. **Double-click** a node to fly to it, **F** /
+  **⤢ Frame all** to fit everything in view.
+- **Outline view** — a Notion-style list of every node by branch → altitude in
+  the left panel; click to fly there. The 2D anchor for the 3D space.
+- **First-run onboarding** — a dismissible overlay explains the axes and
+  controls (reopen with the **?** button).
 - **Focus presets** — `Executive` (Strategy + Project) and `Builder`
   (Project + Execution) instantly hide the floor you don't need.
 - **Create / edit / delete nodes** — each node is typed (strategy, task, info,
@@ -70,18 +75,28 @@ everyone else is doing, at the altitude that matters to them.
 
 ## Run it
 
+**Zero-install:** open [`atlas-standalone.html`](./atlas-standalone.html) in any
+browser — one self-contained file, no server, no network. (AI features need the
+dev build below.)
+
+**Full app:**
+
 ```bash
 cd atlas
 npm install
 npm run dev      # opens http://localhost:5173
 ```
 
-Build a static bundle:
+Other commands:
 
 ```bash
-npm run build    # outputs to dist/
-npm run preview
+npm run build         # production bundle → dist/
+npm run build:single  # regenerate atlas-standalone.html
+npm run test:e2e      # headless-browser smoke test (12 checks, AI mocked)
 ```
+
+See **[TEST.md](./TEST.md)** for a 3-minute manual tour and the debug toolkit
+(state inspection, resets, common fixes).
 
 ---
 

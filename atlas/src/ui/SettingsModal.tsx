@@ -12,8 +12,19 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
   const autoLayout = useStore((s) => s.autoLayout)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const handleExport = () => {
-    const blob = new Blob([exportState()], { type: 'application/json' })
+  const handleExport = async () => {
+    const json = exportState()
+    // In a published artifact, use the sandbox's download bridge if present.
+    const bridge = (globalThis as { claude?: { downloads?: { save: (r: { filename: string; data: string }) => Promise<unknown> } } }).claude
+    if (bridge?.downloads?.save) {
+      try {
+        await bridge.downloads.save({ filename: 'atlas-export.json', data: json })
+        return
+      } catch {
+        /* viewer declined or unavailable — fall through to blob download */
+      }
+    }
+    const blob = new Blob([json], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url

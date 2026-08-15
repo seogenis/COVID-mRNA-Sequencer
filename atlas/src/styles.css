@@ -843,6 +843,193 @@ textarea:focus {
   gap: 8px;
 }
 
+/* ---------- view controls (bottom-right) ---------- */
+.view-controls {
+  position: absolute;
+  right: 12px;
+  bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 17; /* above the inspector (16) */
+  transition: right 0.18s ease;
+}
+/* slide clear of the inspector drawer (340px + margins) when it's open */
+.view-controls.shifted {
+  right: 364px;
+}
+.view-count {
+  font-size: 11px;
+  color: var(--muted);
+  background: rgba(22, 27, 38, 0.8);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+/* ---------- tabs inside a panel head ---------- */
+.tabs.mini {
+  padding: 2px;
+  margin: 0;
+  flex: 1;
+}
+.tabs.mini .tab {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+/* ---------- outline (list) view ---------- */
+.outline {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.outline-hint {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+.outline-branch-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 4px 0;
+}
+.outline-count {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--muted);
+  background: var(--panel-2);
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+.outline-level {
+  margin: 2px 0 2px 4px;
+}
+.outline-level-head {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  margin: 4px 0 2px;
+}
+.outline-node {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--text);
+  padding: 4px 7px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.outline-node:hover {
+  background: var(--panel-2);
+}
+.outline-node.sel {
+  background: #26303f;
+  border-color: var(--accent);
+}
+.outline-node.dim {
+  opacity: 0.4;
+}
+.outline-node-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- onboarding ---------- */
+.modal.onboarding {
+  width: 640px;
+}
+.onb-hero {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.onb-mark {
+  font-size: 40px;
+  color: var(--accent);
+  line-height: 1;
+}
+.onb-hero h2 {
+  margin: 0;
+  font-size: 20px;
+}
+.onb-hero p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.onb-axes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.onb-axis {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 12px;
+}
+.onb-axis-key {
+  font-weight: 700;
+  font-size: 13px;
+  min-width: 96px;
+  flex-shrink: 0;
+}
+.onb-axis-val {
+  font-size: 13px;
+  line-height: 1.45;
+}
+.onb-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-bottom: 12px;
+}
+.onb-h {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.onb-cols ul {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.onb-cols li {
+  margin: 0;
+}
+.onb-note {
+  margin-bottom: 12px;
+}
+.onb-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+
 /* scrollbars */
 ::-webkit-scrollbar {
   width: 9px;

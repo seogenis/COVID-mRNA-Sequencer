@@ -7,3 +7,4 @@ dist/
 # tsc -b composite emit
 vite.config.js
 vite.config.d.ts
+dist-single/

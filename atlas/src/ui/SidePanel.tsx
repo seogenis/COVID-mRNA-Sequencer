@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useStore } from '../store'
 import type { NodeType, Level, Status } from '../types'
+import { matches } from '../lib/layout'
 import {
   TYPE_COLOR,
   TYPE_LABEL,
@@ -15,22 +16,15 @@ import {
 const TYPES: NodeType[] = ['strategy', 'task', 'info', 'question', 'decision']
 const STATUSES: Status[] = ['idea', 'todo', 'doing', 'blocked', 'done']
 
-export function SidePanel() {
-  const filters = useStore((s) => s.filters)
-  const toggleType = useStore((s) => s.toggleType)
-  const toggleLevel = useStore((s) => s.toggleLevel)
-  const toggleStatus = useStore((s) => s.toggleStatus)
-  const toggleBranch = useStore((s) => s.toggleBranch)
-  const setFilters = useStore((s) => s.setFilters)
-  const branches = useStore((s) => s.branches)
-  const addBranch = useStore((s) => s.addBranch)
-  const [collapsed, setCollapsed] = useState(false)
+type Tab = 'filters' | 'outline'
 
-  const branchOn = (id: string) => filters.branchIds === null || filters.branchIds.includes(id)
+export function SidePanel() {
+  const [collapsed, setCollapsed] = useState(false)
+  const [tab, setTab] = useState<Tab>('filters')
 
   if (collapsed) {
     return (
-      <button className="panel-reopen left" onClick={() => setCollapsed(false)} title="Show filters">
+      <button className="panel-reopen left" onClick={() => setCollapsed(false)} title="Show panel">
         ▸
       </button>
     )
@@ -39,12 +33,37 @@ export function SidePanel() {
   return (
     <div className="side-panel">
       <div className="panel-head">
-        <span>Filters</span>
+        <div className="tabs mini">
+          <button className={`tab ${tab === 'filters' ? 'active' : ''}`} onClick={() => setTab('filters')}>
+            Filters
+          </button>
+          <button className={`tab ${tab === 'outline' ? 'active' : ''}`} onClick={() => setTab('outline')}>
+            Outline
+          </button>
+        </div>
         <button className="link" onClick={() => setCollapsed(true)}>
-          ◂ hide
+          ◂
         </button>
       </div>
+      {tab === 'filters' ? <FiltersTab /> : <OutlineTab />}
+    </div>
+  )
+}
 
+function FiltersTab() {
+  const filters = useStore((s) => s.filters)
+  const toggleType = useStore((s) => s.toggleType)
+  const toggleLevel = useStore((s) => s.toggleLevel)
+  const toggleStatus = useStore((s) => s.toggleStatus)
+  const toggleBranch = useStore((s) => s.toggleBranch)
+  const setFilters = useStore((s) => s.setFilters)
+  const branches = useStore((s) => s.branches)
+  const addBranch = useStore((s) => s.addBranch)
+
+  const branchOn = (id: string) => filters.branchIds === null || filters.branchIds.includes(id)
+
+  return (
+    <>
       <div className="filter-group">
         <div className="filter-title">Altitude</div>
         {LEVEL_ORDER.map((l: Level) => (
@@ -119,6 +138,72 @@ export function SidePanel() {
           </div>
         ))}
       </div>
+    </>
+  )
+}
+
+function OutlineTab() {
+  const nodes = useStore((s) => s.nodes)
+  const branches = useStore((s) => s.branches)
+  const filters = useStore((s) => s.filters)
+  const selectedId = useStore((s) => s.selectedId)
+  const focusNode = useStore((s) => s.focusNode)
+
+  const branchList = Object.values(branches)
+  const byBranch = (bid: string) => Object.values(nodes).filter((n) => n.branchId === bid)
+  const orphans = Object.values(nodes).filter((n) => !branches[n.branchId])
+
+  return (
+    <div className="outline">
+      <div className="filter-title outline-hint">Click to fly there. Double-click a node in 3D does the same.</div>
+      {branchList.map((b) => {
+        const bn = byBranch(b.id)
+        if (bn.length === 0) return null
+        return (
+          <div key={b.id} className="outline-branch">
+            <div className="outline-branch-head">
+              <span className="swatch" style={{ background: b.color }} />
+              {b.name}
+              <span className="outline-count">{bn.length}</span>
+            </div>
+            {LEVEL_ORDER.map((level) => {
+              const group = bn.filter((n) => n.level === level).sort((a, z) => a.time.localeCompare(z.time))
+              if (group.length === 0) return null
+              return (
+                <div key={level} className="outline-level">
+                  <div className="outline-level-head">{LEVEL_LABEL[level]}</div>
+                  {group.map((n) => {
+                    const on = matches(n, filters)
+                    return (
+                      <button
+                        key={n.id}
+                        className={`outline-node ${selectedId === n.id ? 'sel' : ''} ${on ? '' : 'dim'}`}
+                        onClick={() => focusNode(n.id)}
+                        title={n.title}
+                      >
+                        <span className="node-status-dot" style={{ background: STATUS_COLOR[n.status] }} />
+                        <span className="swatch" style={{ background: TYPE_COLOR[n.type] }} />
+                        <span className="outline-node-title">{n.title}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )
+            })}
+          </div>
+        )
+      })}
+      {orphans.length > 0 && (
+        <div className="outline-branch">
+          <div className="outline-branch-head">Unassigned</div>
+          {orphans.map((n) => (
+            <button key={n.id} className="outline-node" onClick={() => focusNode(n.id)}>
+              <span className="swatch" style={{ background: TYPE_COLOR[n.type] }} />
+              <span className="outline-node-title">{n.title}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

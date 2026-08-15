@@ -1,14 +1,73 @@
-import { useRef, useState } from 'react'
-import { Canvas } from '@react-three/fiber'
+import { useEffect, useRef, useState } from 'react'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
+import { Vector3, Box3 } from 'three'
 import { useStore } from '../store'
-import { matches } from '../lib/layout'
+import { matches, nodePosition } from '../lib/layout'
 import { LEVEL_Y, dateToX, laneToZ } from '../config'
 import { LevelPlanes } from './LevelPlanes'
 import { TimeGrid } from './TimeGrid'
 import { Edges } from './Edges'
 import { NodeMesh } from './NodeMesh'
+
+/** Smoothly flies the camera to frame a node or the whole graph on request. */
+function CameraRig() {
+  const three = useThree()
+  const frameRequest = useStore((s) => s.frameRequest)
+  const clearFrame = useStore((s) => s.clearFrame)
+  const anim = useRef<{ pos: Vector3; look: Vector3 } | null>(null)
+
+  useEffect(() => {
+    if (!frameRequest) return
+    const { nodes, branches } = useStore.getState()
+    const dir = new Vector3(1, 0.7, 1.4).normalize()
+    if (frameRequest.kind === 'node') {
+      const n = nodes[frameRequest.id]
+      if (n) {
+        const p = nodePosition(n, branches[n.branchId])
+        const look = new Vector3(p[0], p[1], p[2])
+        anim.current = { look, pos: look.clone().add(dir.clone().multiplyScalar(20)) }
+      }
+    } else {
+      const list = Object.values(nodes)
+      if (list.length === 0) {
+        anim.current = { look: new Vector3(0, 0, 0), pos: dir.clone().multiplyScalar(60) }
+      } else {
+        const box = new Box3()
+        for (const n of list) {
+          const p = nodePosition(n, branches[n.branchId])
+          box.expandByPoint(new Vector3(p[0], p[1], p[2]))
+        }
+        const center = box.getCenter(new Vector3())
+        const size = box.getSize(new Vector3())
+        const dist = Math.max(size.length() * 0.65, 30) + 12
+        anim.current = { look: center, pos: center.clone().add(dir.clone().multiplyScalar(dist)) }
+      }
+    }
+    clearFrame()
+  }, [frameRequest, clearFrame])
+
+  useFrame(() => {
+    const a = anim.current
+    if (!a) return
+    const controls = three.controls as unknown as { target: Vector3; update: () => void } | null
+    three.camera.position.lerp(a.pos, 0.12)
+    if (controls?.target) {
+      controls.target.lerp(a.look, 0.12)
+      controls.update()
+    }
+    if (three.camera.position.distanceTo(a.pos) < 0.4) {
+      three.camera.position.copy(a.pos)
+      if (controls?.target) {
+        controls.target.copy(a.look)
+        controls.update()
+      }
+      anim.current = null
+    }
+  })
+  return null
+}
 
 interface DragState {
   id: string
@@ -71,6 +130,7 @@ export function Scene() {
       <directionalLight position={[20, 40, 20]} intensity={1.1} />
       <directionalLight position={[-30, 20, -20]} intensity={0.4} color="#8b9dff" />
 
+      <CameraRig />
       <LevelPlanes />
       <TimeGrid />
       <Edges />

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
 import type {
   AtlasNode,
   AtlasEdge,
@@ -18,6 +18,36 @@ import type { GraphProposal } from './lib/ai'
 
 const ALL_TYPES: NodeType[] = ['strategy', 'task', 'info', 'question', 'decision']
 const ALL_STATUS: Status[] = ['idea', 'todo', 'doing', 'blocked', 'done']
+
+// Some sandboxed contexts (e.g. a published artifact iframe) can throw when
+// touching localStorage. Fall back to an in-memory map so the app still runs.
+const memoryStore: Record<string, string> = {}
+const safeStorage = {
+  getItem: (k: string): string | null => {
+    try {
+      return globalThis.localStorage?.getItem(k) ?? memoryStore[k] ?? null
+    } catch {
+      return memoryStore[k] ?? null
+    }
+  },
+  setItem: (k: string, v: string): void => {
+    try {
+      globalThis.localStorage?.setItem(k, v)
+    } catch {
+      memoryStore[k] = v
+    }
+  },
+  removeItem: (k: string): void => {
+    try {
+      globalThis.localStorage?.removeItem(k)
+    } catch {
+      delete memoryStore[k]
+    }
+  },
+}
+
+/** Transient request to fly the camera somewhere (never persisted). */
+export type FrameRequest = { kind: 'all' } | { kind: 'node'; id: string }
 
 function uid(prefix = 'n'): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
@@ -64,6 +94,11 @@ interface Actions {
   startLinking: (id: string, kind: EdgeKind) => void
   cancelLinking: () => void
 
+  frameAll: () => void
+  frameNode: (id: string) => void
+  clearFrame: () => void
+  focusNode: (id: string) => void
+
   approve: (commitId: string) => void
   setMe: (name: string) => void
   setSetting: <K extends keyof State['settings']>(key: K, value: State['settings'][K]) => void
@@ -84,6 +119,7 @@ interface State {
   selectedId: string | null
   linkingFrom: string | null
   linkKind: EdgeKind
+  frameRequest: FrameRequest | null
   me: string
   settings: { anthropicApiKey: string; aiModel: string; showLevelPlanes: boolean; showTimeGrid: boolean }
 }
@@ -112,6 +148,7 @@ export const useStore = create<State & Actions>()(
       selectedId: null,
       linkingFrom: null,
       linkKind: 'hierarchy',
+      frameRequest: null,
       me: 'You',
       settings: { anthropicApiKey: '', aiModel: 'claude-sonnet-5', showLevelPlanes: true, showTimeGrid: true },
 
@@ -345,6 +382,11 @@ export const useStore = create<State & Actions>()(
       startLinking: (id, kind) => set({ linkingFrom: id, linkKind: kind }),
       cancelLinking: () => set({ linkingFrom: null }),
 
+      frameAll: () => set({ frameRequest: { kind: 'all' } }),
+      frameNode: (id) => set({ frameRequest: { kind: 'node', id } }),
+      clearFrame: () => set({ frameRequest: null }),
+      focusNode: (id) => set({ selectedId: id, linkingFrom: null, frameRequest: { kind: 'node', id } }),
+
       approve: (commitId) =>
         set((s) => ({
           commits: s.commits.map((c) => (c.id === commitId ? { ...c, approved: true } : c)),
@@ -409,6 +451,7 @@ export const useStore = create<State & Actions>()(
     }),
     {
       name: 'atlas-store-v1',
+      storage: createJSONStorage(() => safeStorage),
       partialize: (s) => ({
         nodes: s.nodes,
         edges: s.edges,
