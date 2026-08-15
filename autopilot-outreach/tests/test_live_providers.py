@@ -109,6 +109,20 @@ class TestGooglePlaces(Base):
         # No websiteUri → has_site False, ready for the no_site path.
         self.assertFalse(leads[1].presence.has_site)
 
+    def test_poisoned_token_loop_terminates(self):
+        """Deep pages that return no new places but keep yielding a
+        nextPageToken must NOT loop forever (each request is billable)."""
+        settings.google_places_key = "test-key"
+        same_page = (200, json.dumps({
+            "places": [{"id": "ChIJdup", "displayName": {"text": "Dup Co"},
+                        "formattedAddress": "1 St"}],
+            "nextPageToken": "tok-again",
+        }))
+        fake = FakeHttp([same_page] * 50)  # would allow 50 requests if buggy
+        leads = GooglePlacesDiscovery(http=fake).search("Waco", "landscaping", 40)
+        self.assertEqual(len(leads), 1, "duplicate place must be deduped")
+        self.assertLessEqual(len(fake.calls), 3, "must stop at the page cap")
+
     def test_api_error_raises_with_body(self):
         settings.google_places_key = "test-key"
         fake = FakeHttp([(403, '{"error": {"message": "API key invalid"}}')])

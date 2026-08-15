@@ -83,26 +83,52 @@ class GooglePlacesDiscovery(DiscoveryProvider):
         }
         query = f"{category.replace('_', ' ')} in {city}"
         leads: list[Lead] = []
+        seen_ids: set[str] = set()
         page_token: str | None = None
 
-        while len(leads) < limit:
-            body: dict = {"textQuery": query,
-                          "pageSize": min(20, limit - len(leads))}
+        # Text search returns at most ~60 results (3 pages of 20). Deep pages
+        # can return ZERO new places while still handing back a nextPageToken —
+        # without the page cap + no-progress break below, the loop spins
+        # forever firing billable requests (learned the expensive way).
+        MAX_PAGES = 3
+        for _ in range(MAX_PAGES):
+            if len(leads) >= limit:
+                break
+            body: dict = {"textQuery": query, "pageSize": 20}
             if page_token:
                 body["pageToken"] = page_token
-            status, text = self.http.request("POST", self.ENDPOINT,
-                                             headers=headers, json_body=body)
+            status, text = self._request_with_retry(headers, body)
             if status != 200:
                 raise RuntimeError(f"Places API error {status}: {text[:300]}")
             data = json.loads(text)
+            new = 0
             for place in data.get("places", []):
+                pid = place.get("id", "")
+                if pid in seen_ids:
+                    continue
+                seen_ids.add(pid)
                 leads.append(self._to_lead(place, city, category))
+                new += 1
                 if len(leads) >= limit:
                     break
             page_token = data.get("nextPageToken")
-            if not page_token:
+            if not page_token or new == 0:
                 break
-        return leads
+        return leads[:limit]
+
+    def _request_with_retry(self, headers: dict, body: dict,
+                            attempts: int = 3) -> tuple[int, str]:
+        """Proxied connections drop transiently (RemoteDisconnected); retry
+        with short backoff before surfacing the failure."""
+        last: Exception | None = None
+        for i in range(attempts):
+            try:
+                return self.http.request("POST", self.ENDPOINT,
+                                         headers=headers, json_body=body)
+            except Exception as e:
+                last = e
+                time.sleep(2 * (i + 1))
+        raise RuntimeError(f"Places API unreachable after {attempts} attempts: {last}")
 
     @staticmethod
     def _to_lead(place: dict, city: str, category: str) -> Lead:
