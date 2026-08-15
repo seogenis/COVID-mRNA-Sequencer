@@ -148,6 +148,16 @@ class TestHeadlessPresence(Base):
         self.assertEqual(lead.presence.category, PresenceCategory.NO_SITE.value)
         self.assertIn("unreachable", lead.presence.issues[0].lower())
 
+    def test_egress_blocked_is_inconclusive_not_no_site(self):
+        """A blocked proxy tunnel means WE can't see out — never conclude the
+        business has no site (that puts false claims into outreach copy)."""
+        def blocked(url):
+            raise OSError("Tunnel connection failed: 403 Forbidden")
+        lead = self._lead("https://real-biz.example")
+        HeadlessPresence(fetch=blocked).analyze(lead)
+        self.assertTrue(lead.presence.has_site)
+        self.assertIn("INCONCLUSIVE", lead.presence.issues[0])
+
     def test_modern_site_scores_high(self):
         fetch = lambda u: FetchResult(200, "https://prolawn.example", MODERN_HTML, 800)
         lead = self._lead("https://prolawn.example")

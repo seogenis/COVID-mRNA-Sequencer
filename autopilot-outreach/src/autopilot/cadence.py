@@ -54,8 +54,22 @@ def _first(lead: Lead) -> str:
 
 
 def _footer() -> str:
-    postal = settings.postal_address or "Autopilot Web"
-    return f"\n\n— Autopilot Web · {postal}\nReply STOP to opt out."
+    # CAN-SPAM requires a physical postal address in commercial email. Render
+    # an unmissable placeholder rather than silently repeating the brand.
+    postal = settings.postal_address or "[POSTAL ADDRESS REQUIRED BEFORE SENDING — CAN-SPAM]"
+    return f"\n\n— {settings.brand} · {postal}\nReply STOP to opt out."
+
+
+def price_offer() -> str:
+    """The keep-it line, switching to free-first phrasing when APOP_PRICE=0."""
+    if settings.price_one_time <= 0:
+        return ("And it's yours free — no catch, no invoice. If you like it, "
+                "I'll even help you put it on your own domain.")
+    monthly = (f" plus ${settings.price_monthly}/mo hosting"
+               if settings.price_monthly > 0 else
+               " and I'll put it live on your own domain for you")
+    return (f"If you like it, it's a one-time ${settings.price_one_time} to "
+            f"keep{monthly}. If not, no worries at all.")
 
 
 def render_email(lead: Lead, kind: str, variant: str) -> tuple[str, str]:
@@ -63,8 +77,6 @@ def render_email(lead: Lead, kind: str, variant: str) -> tuple[str, str]:
     b = lead.business
     first = _first(lead)
     url = lead.demo.preview_url
-    price = settings.price_one_time
-    monthly = settings.price_monthly
 
     if kind == "intro":
         if variant == "A":  # curiosity hook
@@ -75,13 +87,23 @@ def render_email(lead: Lead, kind: str, variant: str) -> tuple[str, str]:
                            f"so I built you a new one")
             else:
                 subject = f"{b.city} customers can't find {b.name} online — so I fixed that"
+        # Opening claim must match what we actually verified about their
+        # presence — unverified audits get the claim-free version.
+        inconclusive = any("INCONCLUSIVE" in i for i in lead.presence.issues)
+        if not lead.presence.has_site:
+            opener = (f"I noticed {b.name} doesn't have a website yet, so I "
+                      f"went ahead and built you one — modern and mobile-friendly.")
+        elif inconclusive:
+            opener = (f"I build websites for local service businesses, and I "
+                      f"made one for {b.name} — finished, real, and ready to look at.")
+        else:
+            opener = (f"I noticed {b.name}'s website could use a refresh, so I "
+                      f"went ahead and built you a new one — modern and mobile-friendly.")
         body = (
             f"Hi {first},\n\n"
-            f"I noticed {b.name} could use a stronger web presence, so I went "
-            f"ahead and built you a modern, mobile-friendly site. It's live for "
-            f"you to preview — free, no obligation:\n\n    {url}\n\n"
-            f"If you like it, it's ${price} to keep plus ${monthly}/mo hosting. "
-            f"If not, no worries at all.{_footer()}"
+            f"{opener} It's live for you to preview — free, no obligation:\n\n"
+            f"    {url}\n\n"
+            f"{price_offer()}{_footer()}"
         )
     elif kind == "followup":
         subject = f"Re: your new {b.name} website"

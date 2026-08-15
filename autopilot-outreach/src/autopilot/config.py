@@ -44,9 +44,13 @@ class Settings:
     # Preview host used to build demo URLs (mock uses local dashboard links).
     preview_host: str = os.environ.get("APOP_PREVIEW_HOST", "http://localhost:8000")
 
-    # Commercial defaults.
+    # Commercial defaults. Set APOP_PRICE=0 for a free-first campaign — all
+    # outreach copy switches to "it's yours free" phrasing automatically.
     price_one_time: int = int(os.environ.get("APOP_PRICE", "1000"))
     price_monthly: int = int(os.environ.get("APOP_PRICE_MONTHLY", "35"))
+
+    # Name used in email signatures, the AI disclosure line, and site footers.
+    brand: str = os.environ.get("APOP_BRAND", "Autopilot Web")
 
     # Compliance: allowed local calling window (24h clock).
     call_hours_start: int = int(os.environ.get("APOP_CALL_START", "8"))

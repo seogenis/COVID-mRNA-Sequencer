@@ -165,6 +165,21 @@ class TestCadence(Base):
         subject, _ = render_email(no_site, "intro", "B")
         self.assertIn("can't find", subject)
 
+    def test_free_mode_copy_offers_free_not_zero_dollars(self):
+        """APOP_PRICE=0 must produce 'yours free' copy, never '$0 to keep'."""
+        from autopilot.cadence import render_email
+        from autopilot.models import Lead
+        lead = Lead(id="f1")
+        lead.business.name = "Joe's"
+        old_price = settings.price_one_time
+        try:
+            settings.price_one_time = 0
+            _, body = render_email(lead, "intro", "A")
+            self.assertIn("free", body.lower())
+            self.assertNotIn("$0", body)
+        finally:
+            settings.price_one_time = old_price
+
     def test_ab_stats_totals_match_funnel(self):
         from autopilot.cadence import ab_stats
         self.pipe.run_campaign("Austin", "landscaping", 12)

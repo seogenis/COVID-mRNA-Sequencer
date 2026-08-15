@@ -38,6 +38,8 @@ def _apply_common(args) -> None:
         settings.seed = args.seed
     if getattr(args, "mode", None):
         settings.mode = args.mode
+    if getattr(args, "free", False):
+        settings.price_one_time = 0
     settings.ensure_dirs()
 
 
@@ -208,6 +210,8 @@ def build_parser() -> argparse.ArgumentParser:
     d.add_argument("--category", default="landscaping",
                    choices=["landscaping", "auto_repair", "plumbing"])
     d.add_argument("--limit", type=int, default=12)
+    d.add_argument("--free", action="store_true",
+                   help="free-first campaign: all copy offers the site for free")
     d.set_defaults(func=cmd_demo)
 
     db = sub.add_parser("dashboard", help="serve the local dashboard")

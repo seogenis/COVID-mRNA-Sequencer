@@ -222,7 +222,7 @@ class MockVoice(VoiceProvider):
     def call(self, lead: Lead, script: dict) -> dict:
         rng = random.Random(f"{settings.seed}:voice:{lead.id}")
         roll = rng.random()
-        disclosure = AI_DISCLOSURE_LINE.format(company="Autopilot Web")
+        disclosure = AI_DISCLOSURE_LINE.format(company=settings.brand)
 
         # Disposition is seeded ONLY by lead id (not variant), so mock A/B
         # outcomes stay symmetric — the mock never fakes a winning variant.
@@ -239,10 +239,10 @@ class MockVoice(VoiceProvider):
         elif roll < 0.35:
             disposition, tail = "no_answer", ["[voicemail — dropped link via SMS]"]
         else:
+            from ..cadence import price_offer
             disposition, tail = "interested", [
                 "OWNER: Oh, really? Yeah, send it over.",
-                f"AGENT: Sent! If you like it, it's ${settings.price_one_time} to keep, "
-                f"plus ${settings.price_monthly}/mo hosting. No pressure — take a look first.",
+                f"AGENT: Sent! {price_offer()} No pressure — take a look first.",
                 f"OWNER: Wow, that actually looks great. Let's talk.",
             ]
         transcript = "\n".join(lines + tail)

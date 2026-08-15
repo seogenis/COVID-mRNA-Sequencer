@@ -143,9 +143,15 @@ class FetchResult:
 
 
 def _default_fetch(url: str, timeout: float = 15.0) -> FetchResult:
+    # Share HttpClient's CA-aware SSL context: without it, environments that
+    # route egress through a TLS-intercepting proxy fail verification and every
+    # site falsely audits as "unreachable".
+    from .http import _ca_bundle
+    import ssl
+    ctx = ssl.create_default_context(cafile=_ca_bundle())
     t0 = time.monotonic()
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (compatible; SiteAudit/1.0)"})
-    with urllib.request.urlopen(req, timeout=timeout) as resp:  # nosec - audit fetch
+    with urllib.request.urlopen(req, timeout=timeout, context=ctx) as resp:  # nosec - audit fetch
         html = resp.read(2_000_000).decode("utf-8", "replace")
         return FetchResult(status=resp.status, final_url=resp.geturl(),
                            html=html, elapsed_ms=int((time.monotonic() - t0) * 1000))
@@ -173,7 +179,19 @@ class HeadlessPresence(PresenceProvider):
             return
         try:
             result = self.fetch(url)
-        except Exception as e:  # unreachable == effectively no site
+        except Exception as e:
+            # Distinguish "THEIR site is down" from "OUR egress is blocked".
+            # A proxy CONNECT refusal means we can't see out — concluding
+            # "no site" from that would put false claims in outreach copy.
+            reason = f"{e} {getattr(e, 'reason', '')}"
+            if "tunnel" in reason.lower() or "forbidden" in reason.lower():
+                lead.presence.has_site = True   # they listed one; trust that
+                lead.presence.score = 50        # neutral — no evidence either way
+                lead.presence.category = PresenceCategory.DECENT.value
+                lead.presence.issues = [
+                    "AUDIT INCONCLUSIVE: egress blocked from this environment "
+                    "— do not make claims about this site in outreach"]
+                return
             lead.presence = Presence(
                 has_site=False, url=url, score=8,
                 category=PresenceCategory.NO_SITE.value,
@@ -389,7 +407,7 @@ class VapiVoice(VoiceProvider):
         if not lead.contacts.phones:
             raise ValueError(f"lead {lead.id} has no phone number")
 
-        disclosure = AI_DISCLOSURE_LINE.format(company="Autopilot Web")
+        disclosure = AI_DISCLOSURE_LINE.format(company=settings.brand)
         system_prompt = (
             f"You are a polite sales assistant. Your FIRST sentence must be "
             f"exactly: \"{disclosure}\" Then: {script['opener']} "

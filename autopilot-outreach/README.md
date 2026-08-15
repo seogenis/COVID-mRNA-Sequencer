@@ -61,6 +61,22 @@ make test                           # run the test suite (30 tests, stdlib unitt
 
 Verticals available in mock mode: `landscaping`, `auto_repair`, `plumbing`.
 
+### Pilot: run ONE real business through the pipeline (no keys)
+
+```bash
+cp examples/pilot-example.json data/pilots/my-target.json   # fill with public facts
+APOP_PRICE=200 APOP_PRICE_MONTHLY=0 APOP_BRAND="Your Co" \
+    python3 scripts/pilot.py data/pilots/my-target.json
+```
+
+`pilot.py` audits their real website (live provider), builds the real demo
+site, stores the lead, and prints the intro email for **human review — nothing
+is ever sent automatically in a pilot**. Rules baked in: if the site audit is
+inconclusive (e.g. egress-blocked sandbox), the copy is forced onto the
+claim-free curiosity hook; `data/` is gitignored so real-business specs stay
+local. Pricing knobs: `APOP_PRICE=0` → free-first copy; `APOP_PRICE_MONTHLY=0`
+→ one-time price only.
+
 ---
 
 ## What it looks like

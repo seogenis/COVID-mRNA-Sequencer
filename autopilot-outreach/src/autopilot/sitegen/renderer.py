@@ -147,7 +147,7 @@ def render_html(lead: Lead, copy: dict) -> str:
 
 <footer><div class="wrap">
   {_e(b.name)} · {_e(b.address)}, {_e(b.city)}, {_e(b.state)} · {_e(b.phone)}<br>
-  &copy; {year} {_e(b.name)}. Site by Autopilot Web.
+  &copy; {year} {_e(b.name)}. Site by {_e(settings.brand)}.
 </div></footer>
 </body>
 </html>
