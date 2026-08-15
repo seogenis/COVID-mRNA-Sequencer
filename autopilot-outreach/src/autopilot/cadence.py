@@ -65,11 +65,13 @@ def price_offer() -> str:
     if settings.price_one_time <= 0:
         return ("And it's yours free — no catch, no invoice. If you like it, "
                 "I'll even help you put it on your own domain.")
-    monthly = (f" plus ${settings.price_monthly}/mo hosting"
-               if settings.price_monthly > 0 else
-               " and I'll put it live on your own domain for you")
-    return (f"If you like it, it's a one-time ${settings.price_one_time} to "
-            f"keep{monthly}. If not, no worries at all.")
+    offer = (f"Looking is free. If you like it, a one-time "
+             f"${settings.price_one_time} gets you a refined version — your "
+             f"photos, your wording, any changes you want — live on your own "
+             f"domain")
+    if settings.price_monthly > 0:
+        offer += f", plus ${settings.price_monthly}/mo hosting"
+    return offer + ". If not, no worries at all."
 
 
 def render_email(lead: Lead, kind: str, variant: str) -> tuple[str, str]:
