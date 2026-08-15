@@ -1,0 +1,10 @@
+# NO DEPENDENCIES — both mock AND live mode run on the Python 3.9+ standard
+# library only. Live providers use a stdlib HTTP client (providers/http.py)
+# and smtplib, so "pip install" is never required.
+#
+# Run: python3 run.py demo         (offline, zero keys)
+#      python3 run.py doctor       (see which live keys are configured)
+#
+# Optional future extras (not needed today):
+# playwright          # screenshot-based presence scoring (heuristics already work)
+# anthropic           # official SDK, if you outgrow the stdlib client
