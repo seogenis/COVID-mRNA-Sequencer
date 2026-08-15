@@ -135,6 +135,8 @@ class GooglePlacesDiscovery(DiscoveryProvider):
         pid = place.get("id", "")
         short = hashlib.sha1(pid.encode()).hexdigest()[:10]
         loc = place.get("location", {})
+        # Callers pass "Waco, TX" — split so copy never renders "Waco, TX's".
+        city_part, _, state_part = (p.strip() for p in city.partition(","))
         lead = Lead(
             id=f"gp-{short}",
             source="google_places",
@@ -144,7 +146,8 @@ class GooglePlacesDiscovery(DiscoveryProvider):
                 category=category,
                 phone=place.get("nationalPhoneNumber", ""),
                 address=place.get("formattedAddress", ""),
-                city=city,
+                city=city_part,
+                state=state_part,
                 lat=loc.get("latitude", 0.0),
                 lng=loc.get("longitude", 0.0),
                 rating=place.get("rating", 0.0),
