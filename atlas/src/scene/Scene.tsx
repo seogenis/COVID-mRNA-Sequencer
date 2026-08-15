@@ -10,6 +10,7 @@ import { LevelPlanes } from './LevelPlanes'
 import { TimeGrid } from './TimeGrid'
 import { Edges } from './Edges'
 import { NodeMesh } from './NodeMesh'
+import { BranchLabels } from './BranchLabels'
 
 /** Smoothly flies the camera to frame a node or the whole graph on request. */
 function CameraRig() {
@@ -162,6 +163,7 @@ export function Scene() {
       <CameraRig />
       <LevelPlanes />
       <TimeGrid />
+      <BranchLabels />
       <Edges />
 
       {nodeList.map((n) => (

@@ -1,4 +1,6 @@
+import { useRef } from 'react'
 import { useStore } from '../store'
+import { matches } from '../lib/layout'
 import type { FocusPreset } from '../types'
 
 const FOCUS: { key: FocusPreset; label: string; hint: string }[] = [
@@ -22,6 +24,24 @@ export function Toolbar({ onOpenHistory, onOpenSettings, onOpenAi }: Props) {
   const pending = useStore((s) => s.commits.filter((c) => c.needsApproval && !c.approved).length)
   const undo = useStore((s) => s.undo)
   const undoLabel = useStore((s) => s.past[s.past.length - 1]?.label)
+  const nodes = useStore((s) => s.nodes)
+  const filters = useStore((s) => s.filters)
+  const focusNode = useStore((s) => s.focusNode)
+  const cycleRef = useRef(0)
+
+  const matchCount = search.trim()
+    ? Object.values(nodes).filter((n) => matches(n, filters)).length
+    : null
+
+  // Enter flies to the next matching node, cycling through all matches.
+  const flyToMatch = () => {
+    const hits = Object.values(nodes)
+      .filter((n) => matches(n, filters))
+      .sort((a, z) => a.title.localeCompare(z.title))
+    if (hits.length === 0) return
+    focusNode(hits[cycleRef.current % hits.length].id)
+    cycleRef.current += 1
+  }
 
   const handleAdd = () => {
     const level = focus === 'executive' ? 'strategy' : focus === 'builder' ? 'execution' : 'project'
@@ -55,9 +75,16 @@ export function Toolbar({ onOpenHistory, onOpenSettings, onOpenAi }: Props) {
       <div className="search">
         <input
           value={search}
-          placeholder="Search nodes…"
-          onChange={(e) => setFilters({ search: e.target.value })}
+          placeholder="Search nodes…  (Enter flies to matches)"
+          onChange={(e) => {
+            cycleRef.current = 0
+            setFilters({ search: e.target.value })
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') flyToMatch()
+          }}
         />
+        {matchCount !== null && <span className="search-count">{matchCount}</span>}
       </div>
 
       <div className="toolbar-actions">

@@ -148,6 +148,22 @@ await page.waitForTimeout(300)
 // --- progress rollup ---
 ok('a parent card shows child progress', !!(await page.$('.node-progress')))
 
+// --- search: Enter flies to the match ---
+await page.fill('.search input', 'Jared')
+await page.keyboard.press('Enter')
+await page.waitForTimeout(900)
+const searchedTitle = await page.$eval('.insp-title', (e) => e.value).catch(() => '')
+ok('search + Enter flies to and selects the match', searchedTitle.includes('Jared'))
+
+// --- status dot click advances status (blocked → doing) ---
+await page.click('.node-card.sel button.node-status-dot')
+await page.waitForTimeout(300)
+const statusVal = await page.$eval('.insp-grid label:nth-child(3) select', (e) => e.value).catch(() => null)
+ok('clicking the status dot advances status', statusVal === 'doing')
+await page.fill('.search input', '')
+await page.keyboard.press('Escape')
+await page.waitForTimeout(200)
+
 // --- view controls not blocked by inspector ---
 await page.click('button:has-text("Frame all")')
 await page.waitForTimeout(500)

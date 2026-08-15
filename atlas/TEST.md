@@ -32,9 +32,10 @@ npm run test:e2e
 ```
 
 Rebuilds the standalone file, drives it in headless Chromium (Playwright),
-and checks 12 things: render, onboarding, outline fly-to, editing, node
-creation, focus presets, history, AI-modal state — failing on any console
-error or unexpected network request. On a machine without Playwright's
+and runs 20 checks: render, onboarding, outline fly-to, editing, node
+creation (button + double-click on a floor), undo, people facet, progress
+rollup, search fly-to, status-dot advance, focus presets, history, AI-modal
+state — failing on any console error or unexpected network request. On a machine without Playwright's
 bundled browser it falls back to your installed Chrome; you can also point
 it at a specific binary:
 
@@ -63,12 +64,16 @@ smoke test — no key or network needed.
    suppliers* → 1/2).
 6. **People**: Filters → *People* — uncheck someone to fade their work out.
    That plus **Executive / Builder** is the "what matters to me" view.
-7. **Link**: in the inspector click *depends on →*, then click another node.
-8. **Undo**: delete something with Backspace, bring it back with **Ctrl/⌘+Z**
-   (or the ↩ button).
-9. **History**: edit someone else's strategy node (owner ≠ you) and see it
-   flagged for approval.
-10. **AI** (dev build + key): ✦ → *Compose* → paste a messy paragraph of
+7. **Search**: type in the top bar (match count shows) and press **Enter** to
+   fly to each match in turn.
+8. **Check things off in place**: click the status dot on any card to advance
+   it (todo → doing → done) — watch the parent's progress bar move.
+9. **Link**: in the inspector click *depends on →*, then click another node.
+10. **Undo**: delete something with Backspace, bring it back with **Ctrl/⌘+Z**
+    (or the ↩ button).
+11. **History**: edit someone else's strategy node (owner ≠ you) and see it
+    flagged for approval.
+12. **AI** (dev build + key): ✦ → *Compose* → paste a messy paragraph of
     company thoughts → *Structure this* → review → *Add to space*. Then select
     a strategy node → *Break into projects*.
 

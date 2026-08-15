@@ -196,6 +196,21 @@ textarea:focus {
   gap: 8px;
   margin-left: auto;
 }
+.search {
+  position: relative;
+}
+.search-count {
+  position: absolute;
+  right: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--panel-2);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-variant-numeric: tabular-nums;
+}
 
 /* ---------- side panel (filters) ---------- */
 .side-panel {
@@ -472,6 +487,32 @@ textarea:focus {
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
+}
+/* the card wrapper is pointer-events:none so it never blocks the canvas;
+   the status dot re-enables itself so it can be clicked to advance status */
+button.node-status-dot.clickable {
+  pointer-events: auto;
+  cursor: pointer;
+  border: none;
+  padding: 0;
+  width: 10px;
+  height: 10px;
+}
+button.node-status-dot.clickable:hover {
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.18);
+}
+
+/* branch lane name tags in the 3D scene */
+.branch-label {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  border-left: 3px solid;
+  padding: 2px 8px;
+  background: rgba(20, 25, 35, 0.75);
+  border-radius: 4px;
+  white-space: nowrap;
+  user-select: none;
 }
 .node-type-chip {
   font-size: 10px;

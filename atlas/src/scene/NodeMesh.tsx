@@ -2,10 +2,20 @@ import { useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Html, RoundedBox } from '@react-three/drei'
 import { Vector3 } from 'three'
-import type { AtlasNode } from '../types'
+import type { AtlasNode, Status } from '../types'
 import { useStore } from '../store'
 import { TYPE_COLOR, STATUS_COLOR, STATUS_LABEL, TYPE_LABEL } from '../config'
 import { nodePosition } from '../lib/layout'
+
+/** Click a card's status dot to advance it — no inspector round-trip.
+ *  blocked → doing reads as "unblocked"; done wraps back to todo. */
+const NEXT_STATUS: Record<Status, Status> = {
+  idea: 'todo',
+  todo: 'doing',
+  doing: 'done',
+  done: 'todo',
+  blocked: 'doing',
+}
 
 const SIZE: Record<AtlasNode['level'], [number, number, number]> = {
   strategy: [4, 0.5, 2.4],
@@ -37,9 +47,15 @@ export function NodeMesh({ node, matched, neighbor, hasSelection, progress, onBe
   const select = useStore((s) => s.select)
   const addEdge = useStore((s) => s.addEdge)
   const focusNode = useStore((s) => s.focusNode)
+  const updateNode = useStore((s) => s.updateNode)
   const [hovered, setHovered] = useState(false)
   const [far, setFar] = useState(false)
   const lastCheck = useRef(0)
+
+  const advanceStatus = () => {
+    const next = NEXT_STATUS[node.status]
+    updateNode(node.id, { status: next }, `marked "${node.title}" ${STATUS_LABEL[next]}`)
+  }
 
   const pos = nodePosition(node, branch)
   const size = SIZE[node.level]
@@ -117,10 +133,14 @@ export function NodeMesh({ node, matched, neighbor, hasSelection, progress, onBe
             style={{ ['--accent' as any]: color }}
           >
             <div className="node-card-top">
-              <span
-                className="node-status-dot"
+              <button
+                className="node-status-dot clickable"
                 style={{ background: STATUS_COLOR[node.status] }}
-                title={STATUS_LABEL[node.status]}
+                title={`${STATUS_LABEL[node.status]} — click to advance`}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  advanceStatus()
+                }}
               />
               <span className="node-type-chip">{TYPE_LABEL[node.type]}</span>
               {branch && (

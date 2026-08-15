@@ -141,7 +141,7 @@ export const seedNodes: AtlasNode[] = [
     'decision',
     'strategy',
     'b-data',
-    '2026-03-05',
+    '2026-03-20',
     'idea',
     'Alex',
     'Teleoperate the actual robot to gather on-embodiment data. Higher fidelity, much higher cost per hour.',
