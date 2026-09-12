@@ -8,6 +8,7 @@
     <!-- Capture screen -->
     <string name="capture_camera_starting">Starting camera…</string>
     <string name="capture_camera_unavailable">Camera unavailable</string>
+    <string name="capture_no_preview">No preview on this device — tap still captures</string>
     <string name="capture_camera_permission_needed">Camera permission needed</string>
     <string name="capture_capturing">Capturing…</string>
     <string name="nav_capture_first">Tap: ask\nSwipe fwd: next prompt · back: settings</string>

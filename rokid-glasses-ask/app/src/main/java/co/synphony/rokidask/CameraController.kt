@@ -48,7 +48,15 @@ class CameraController(private val activity: ComponentActivity) {
         private const val UPLOAD_JPEG_QUALITY = 80
     }
 
-    private data class BindingAttempt(val useTargetResolution: Boolean, val useExactFps: Boolean)
+    private data class BindingAttempt(
+        val useTargetResolution: Boolean,
+        val useExactFps: Boolean,
+        /**
+         * The preview is only a framing aid. Dropping it is the last resort, because
+         * capturing blind still does the job whereas no camera at all does not.
+         */
+        val usePreview: Boolean = true
+    )
 
     private var cameraProvider: ProcessCameraProvider? = null
     private var imageCapture: ImageCapture? = null
@@ -96,7 +104,12 @@ class CameraController(private val activity: ComponentActivity) {
         val attempts = listOf(
             BindingAttempt(useTargetResolution = true, useExactFps = true),
             BindingAttempt(useTargetResolution = true, useExactFps = false),
-            BindingAttempt(useTargetResolution = false, useExactFps = false)
+            BindingAttempt(useTargetResolution = false, useExactFps = false),
+            BindingAttempt(
+                useTargetResolution = false,
+                useExactFps = false,
+                usePreview = false
+            )
         )
 
         val rotation = previewView.display?.rotation ?: Surface.ROTATION_0
@@ -108,20 +121,34 @@ class CameraController(private val activity: ComponentActivity) {
             }
             val bound = runCatching {
                 provider.unbindAll()
-                val preview = buildPreview(attempt, rotation).also {
-                    it.setSurfaceProvider(previewView.surfaceProvider)
-                }
                 val capture = buildImageCapture(attempt, rotation)
-                provider.bindToLifecycle(
-                    activity,
-                    CameraSelector.DEFAULT_BACK_CAMERA,
-                    preview,
-                    capture
-                )
+                if (attempt.usePreview) {
+                    val preview = buildPreview(attempt, rotation).also {
+                        it.setSurfaceProvider(previewView.surfaceProvider)
+                    }
+                    provider.bindToLifecycle(
+                        activity,
+                        CameraSelector.DEFAULT_BACK_CAMERA,
+                        preview,
+                        capture
+                    )
+                } else {
+                    provider.bindToLifecycle(
+                        activity,
+                        CameraSelector.DEFAULT_BACK_CAMERA,
+                        capture
+                    )
+                }
                 imageCapture = capture
             }.isSuccess
 
-            if (bound) return null
+            if (bound) {
+                return if (attempt.usePreview) {
+                    null
+                } else {
+                    activity.getString(R.string.capture_no_preview)
+                }
+            }
             Log.w(TAG, "Camera binding attempt failed: $attempt")
         }
 
