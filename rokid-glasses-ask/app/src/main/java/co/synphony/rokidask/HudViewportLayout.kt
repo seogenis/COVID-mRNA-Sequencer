@@ -1,3 +1,8 @@
+/*
+ * Derived from the Rokid Hello World starter in GlassKit
+ * (https://github.com/RealComputer/GlassKit), MIT License, Copyright (c) 2025 @tash-2s.
+ * See THIRD_PARTY_NOTICES.md.
+ */
 package co.synphony.rokidask
 
 import android.content.Context
