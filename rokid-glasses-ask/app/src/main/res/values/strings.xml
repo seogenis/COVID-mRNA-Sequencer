@@ -1,0 +1,27 @@
+<resources>
+    <string name="app_name">Ask</string>
+
+    <string name="screen_capture_title">Ask</string>
+    <string name="screen_answer_title">Answer</string>
+    <string name="screen_settings_title">Settings</string>
+
+    <!-- Capture screen -->
+    <string name="capture_camera_starting">Starting camera…</string>
+    <string name="capture_camera_unavailable">Camera unavailable</string>
+    <string name="capture_camera_permission_needed">Camera permission needed</string>
+    <string name="capture_capturing">Capturing…</string>
+    <string name="nav_capture_first">Tap: ask\nSwipe fwd: next prompt · back: settings</string>
+    <string name="nav_capture">Tap: ask\nSwipe: change prompt · 2-tap: quit</string>
+    <string name="nav_capture_quit_confirm">Tap: ask\nDouble-tap again: QUIT</string>
+
+    <!-- Answer screen -->
+    <string name="answer_thinking">Thinking…</string>
+    <string name="nav_answer">Tap: ask again\nSwipe: scroll · 2-tap: back</string>
+
+    <!-- Settings screen -->
+    <string name="nav_settings">Tap: config page\nSwipe: change model · 2-tap: back</string>
+
+    <!-- Errors shown on the HUD -->
+    <string name="error_no_api_key">No OpenAI API key set.\n\nOpen Settings (swipe back on the Ask screen) and tap to start the config page, or run tools/set-key.sh from your computer.</string>
+    <string name="error_offline">No network. Rokid Glasses have no cellular data: join Wi-Fi first.</string>
+</resources>

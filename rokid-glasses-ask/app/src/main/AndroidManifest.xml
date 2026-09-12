@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- required="false" keeps the app installable on a phone or emulator for testing. -->
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+
+    <application
+        android:name=".RokidAskApplication"
+        android:allowBackup="false"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.RokidAsk">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.RokidAsk">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!--
+            Lets configuration be pushed from a computer over adb, so no keyboard is
+            needed on the glasses. See tools/set-key.sh for the exact command.
+            The receiver only writes config; it never reads any value back out.
+        -->
+        <receiver
+            android:name=".ConfigReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="co.synphony.rokidask.SET_CONFIG" />
+            </intent-filter>
+        </receiver>
+    </application>
+
+</manifest>
